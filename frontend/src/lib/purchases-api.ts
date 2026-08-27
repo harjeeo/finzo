@@ -52,6 +52,7 @@ export interface PurchaseBill {
   grandTotal: string;
   amountPaid: string;
   supplier: Supplier;
+  branch?: { id: string; name: string } | null;
   items?: PurchaseBillItem[];
   payments?: PurchasePayment[];
   returns?: PurchaseReturn[];
@@ -76,12 +77,14 @@ export interface PurchaseBillItemInput {
 
 export interface PurchaseBillInput {
   supplierId: string;
+  branchId?: string;
   discountTotal?: number;
   items: PurchaseBillItemInput[];
 }
 
-export function listPurchaseBills(token: string) {
-  return apiFetch<PurchaseBill[]>("/purchase-bills", { token });
+export function listPurchaseBills(token: string, branchId?: string) {
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  return apiFetch<PurchaseBill[]>(`/purchase-bills${query}`, { token });
 }
 
 export function getPurchaseBill(token: string, id: string) {

@@ -5,6 +5,7 @@ import { useAuth } from "../lib/auth-context";
 import { listSuppliers, type Supplier } from "../lib/suppliers-api";
 import { listProducts, type Product } from "../lib/products-api";
 import { createPurchaseBill } from "../lib/purchases-api";
+import { listBranches, type Branch } from "../lib/branches-api";
 
 interface LineItem {
   productId: string;
@@ -18,7 +19,9 @@ export function NewPurchaseBill() {
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [supplierId, setSupplierId] = useState("");
+  const [branchId, setBranchId] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { productId: "", quantity: "1", unitPrice: "" },
   ]);
@@ -29,6 +32,11 @@ export function NewPurchaseBill() {
     if (!accessToken) return;
     listSuppliers(accessToken).then(setSuppliers);
     listProducts(accessToken).then(setProducts);
+    listBranches(accessToken).then((data) => {
+      setBranches(data);
+      const defaultBranch = data.find((b) => b.isDefault) ?? data[0];
+      if (defaultBranch) setBranchId(defaultBranch.id);
+    });
   }, [accessToken]);
 
   const productMap = new Map(products.map((p) => [p.id, p]));
@@ -104,6 +112,7 @@ export function NewPurchaseBill() {
     try {
       const bill = await createPurchaseBill(accessToken, {
         supplierId,
+        branchId: branchId || undefined,
         items: validLines.map((line) => ({
           productId: line.productId,
           quantity: Number(line.quantity),
@@ -141,6 +150,26 @@ export function NewPurchaseBill() {
             ))}
           </select>
         </div>
+
+        {branches.length > 1 && (
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700">
+              Branch
+            </label>
+            <select
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            >
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                  {b.isDefault ? " (Default)" : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="mt-6">
           <div className="mb-2 flex items-center justify-between">

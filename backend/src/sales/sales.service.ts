@@ -4,18 +4,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { BranchesService } from '../branches/branches.service.js';
 import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
 import { CreateSalesReturnDto } from './dto/create-sales-return.dto.js';
 
 @Injectable()
 export class SalesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly branchesService: BranchesService,
+  ) {}
 
-  findAll(businessId: string) {
+  findAll(businessId: string, branchId?: string) {
     return this.prisma.salesInvoice.findMany({
-      where: { businessId },
-      include: { customer: true },
+      where: { businessId, ...(branchId ? { branchId } : {}) },
+      include: { customer: true, branch: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -25,6 +29,7 @@ export class SalesService {
       where: { id, businessId },
       include: {
         customer: true,
+        branch: true,
         items: true,
         payments: { orderBy: { paymentDate: 'desc' } },
         returns: {
@@ -189,6 +194,19 @@ export class SalesService {
       throw new BadRequestException('Customer not found');
     }
 
+    let branchId: string;
+    if (dto.branchId) {
+      const branch = await this.prisma.branch.findFirst({
+        where: { id: dto.branchId, businessId },
+      });
+      if (!branch) {
+        throw new BadRequestException('Branch not found');
+      }
+      branchId = branch.id;
+    } else {
+      branchId = (await this.branchesService.getOrCreateDefaultBranch(businessId)).id;
+    }
+
     const productIds = dto.items.map((item) => item.productId);
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds }, businessId },
@@ -253,6 +271,7 @@ export class SalesService {
       const invoice = await tx.salesInvoice.create({
         data: {
           businessId,
+          branchId,
           customerId: dto.customerId,
           invoiceNumber,
           status,
@@ -274,7 +293,7 @@ export class SalesService {
             })),
           },
         },
-        include: { items: true, customer: true },
+        include: { items: true, customer: true, branch: true },
       });
 
       for (const item of dto.items) {

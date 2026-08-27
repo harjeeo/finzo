@@ -16,6 +16,7 @@ import { PurchaseBillDetail } from "../pages/PurchaseBillDetail";
 import { Expenses } from "../pages/Expenses";
 import { Reports } from "../pages/Reports";
 import { Staff } from "../pages/Staff";
+import { Branches } from "../pages/Branches";
 import { Settings } from "../pages/Settings";
 import { Billing } from "../pages/Billing";
 import { SalesInvoicePrint } from "../pages/SalesInvoicePrint";
@@ -73,6 +74,7 @@ export const router = createBrowserRouter([
             children: [
               { path: "staff", element: <Staff /> },
               { path: "settings", element: <Settings /> },
+              { path: "branches", element: <Branches /> },
             ],
           },
         ],

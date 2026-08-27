@@ -16,8 +16,9 @@ export class ReportsController {
     @CurrentBusinessId() businessId: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('branchId') branchId?: string,
   ) {
-    return this.reportsService.getSummary(businessId, { from, to });
+    return this.reportsService.getSummary(businessId, { from, to }, branchId);
   }
 
   @Get('stock')

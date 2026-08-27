@@ -4,18 +4,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { BranchesService } from '../branches/branches.service.js';
 import { CreatePurchaseBillDto } from './dto/create-purchase-bill.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
 import { CreatePurchaseReturnDto } from './dto/create-purchase-return.dto.js';
 
 @Injectable()
 export class PurchasesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly branchesService: BranchesService,
+  ) {}
 
-  findAll(businessId: string) {
+  findAll(businessId: string, branchId?: string) {
     return this.prisma.purchaseBill.findMany({
-      where: { businessId },
-      include: { supplier: true },
+      where: { businessId, ...(branchId ? { branchId } : {}) },
+      include: { supplier: true, branch: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -25,6 +29,7 @@ export class PurchasesService {
       where: { id, businessId },
       include: {
         supplier: true,
+        branch: true,
         items: true,
         payments: { orderBy: { paymentDate: 'desc' } },
         returns: {
@@ -203,6 +208,19 @@ export class PurchasesService {
       throw new BadRequestException('Supplier not found');
     }
 
+    let branchId: string;
+    if (dto.branchId) {
+      const branch = await this.prisma.branch.findFirst({
+        where: { id: dto.branchId, businessId },
+      });
+      if (!branch) {
+        throw new BadRequestException('Branch not found');
+      }
+      branchId = branch.id;
+    } else {
+      branchId = (await this.branchesService.getOrCreateDefaultBranch(businessId)).id;
+    }
+
     const productIds = dto.items.map((item) => item.productId);
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds }, businessId },
@@ -251,6 +269,7 @@ export class PurchasesService {
       const bill = await tx.purchaseBill.create({
         data: {
           businessId,
+          branchId,
           supplierId: dto.supplierId,
           billNumber,
           status: 'UNPAID',
@@ -270,7 +289,7 @@ export class PurchasesService {
             })),
           },
         },
-        include: { items: true, supplier: true },
+        include: { items: true, supplier: true, branch: true },
       });
 
       for (const item of dto.items) {

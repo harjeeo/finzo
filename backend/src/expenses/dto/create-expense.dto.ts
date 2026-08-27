@@ -11,6 +11,10 @@ export class CreateExpenseDto {
 
   @IsOptional()
   @IsString()
+  branchId?: string;
+
+  @IsOptional()
+  @IsString()
   paymentMode?: string;
 
   @IsOptional()

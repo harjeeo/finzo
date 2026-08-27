@@ -53,6 +53,7 @@ export interface SalesInvoice {
   amountPaid: string;
   paymentMode: string | null;
   customer: Customer;
+  branch?: { id: string; name: string } | null;
   items?: SalesInvoiceItem[];
   payments?: SalesPayment[];
   returns?: SalesReturn[];
@@ -77,14 +78,16 @@ export interface SalesInvoiceItemInput {
 
 export interface SalesInvoiceInput {
   customerId: string;
+  branchId?: string;
   discountTotal?: number;
   amountPaid?: number;
   paymentMode?: string;
   items: SalesInvoiceItemInput[];
 }
 
-export function listSalesInvoices(token: string) {
-  return apiFetch<SalesInvoice[]>("/sales-invoices", { token });
+export function listSalesInvoices(token: string, branchId?: string) {
+  const query = branchId ? `?branchId=${encodeURIComponent(branchId)}` : "";
+  return apiFetch<SalesInvoice[]>(`/sales-invoices${query}`, { token });
 }
 
 export function getSalesInvoice(token: string, id: string) {

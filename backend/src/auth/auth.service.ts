@@ -55,6 +55,14 @@ export class AuthService {
         },
       });
 
+      await tx.branch.create({
+        data: {
+          businessId: createdBusiness.id,
+          name: 'Main Branch',
+          isDefault: true,
+        },
+      });
+
       return { user: createdUser, business: createdBusiness };
     });
 

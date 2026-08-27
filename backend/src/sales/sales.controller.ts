@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
@@ -22,8 +23,11 @@ export class SalesController {
   constructor(private readonly salesService: SalesService) {}
 
   @Get()
-  findAll(@CurrentBusinessId() businessId: string) {
-    return this.salesService.findAll(businessId);
+  findAll(
+    @CurrentBusinessId() businessId: string,
+    @Query('branchId') branchId?: string,
+  ) {
+    return this.salesService.findAll(businessId, branchId);
   }
 
   @Get(':id')

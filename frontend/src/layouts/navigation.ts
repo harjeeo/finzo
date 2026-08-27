@@ -10,6 +10,7 @@ import {
   Analytics01Icon,
   UserMultipleIcon,
   Setting07Icon,
+  Building03Icon,
 } from "hugeicons-react";
 import type { HugeiconsIconProps } from "@hugeicons/react";
 import type { ReactElement } from "react";
@@ -47,6 +48,12 @@ export const navItems: NavItem[] = [
     path: "/reports",
     icon: Analytics01Icon,
     roles: ["MANAGER", "ACCOUNTANT"],
+  },
+  {
+    label: "Branches",
+    path: "/branches",
+    icon: Building03Icon,
+    roles: ["MANAGER"],
   },
   {
     label: "Staff",

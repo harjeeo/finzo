@@ -68,8 +68,27 @@ model Business {
   expenses        Expense[]
   salesReturns    SalesReturn[]
   purchaseReturns PurchaseReturn[]
+  branches        Branch[]
 
   @@map("businesses")
+}
+
+model Branch {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  address    String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  salesInvoices SalesInvoice[]
+  purchaseBills PurchaseBill[]
+  expenses      Expense[]
+
+  @@index([businessId])
+  @@map("branches")
 }
 
 // Links a User to a Business with a role — supports multi-business users.
@@ -159,6 +178,7 @@ model Product {
 model SalesInvoice {
   id            String        @id @default(cuid())
   businessId    String
+  branchId      String?
   customerId    String
   invoiceNumber String
   invoiceDate   DateTime      @default(now())
@@ -173,6 +193,7 @@ model SalesInvoice {
   updatedAt     DateTime      @updatedAt
 
   business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch?            @relation(fields: [branchId], references: [id])
   customer Customer           @relation(fields: [customerId], references: [id])
   items    SalesInvoiceItem[]
   payments SalesPayment[]
@@ -180,6 +201,7 @@ model SalesInvoice {
 
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
+  @@index([branchId])
   @@map("sales_invoices")
 }
 
@@ -260,6 +282,7 @@ model SalesReturnItem {
 model PurchaseBill {
   id            String        @id @default(cuid())
   businessId    String
+  branchId      String?
   supplierId    String
   billNumber    String
   billDate      DateTime      @default(now())
@@ -273,6 +296,7 @@ model PurchaseBill {
   updatedAt     DateTime      @updatedAt
 
   business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch?            @relation(fields: [branchId], references: [id])
   supplier Supplier           @relation(fields: [supplierId], references: [id])
   items    PurchaseBillItem[]
   payments PurchasePayment[]
@@ -280,6 +304,7 @@ model PurchaseBill {
 
   @@unique([businessId, billNumber])
   @@index([businessId])
+  @@index([branchId])
   @@map("purchase_bills")
 }
 
@@ -360,6 +385,7 @@ model PurchaseReturnItem {
 model Expense {
   id          String   @id @default(cuid())
   businessId  String
+  branchId    String?
   category    String
   amount      Decimal  @db.Decimal(14, 2)
   paymentMode String   @default("CASH")
@@ -369,7 +395,9 @@ model Expense {
   updatedAt   DateTime @updatedAt
 
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch   Branch?  @relation(fields: [branchId], references: [id])
 
   @@index([businessId])
+  @@index([branchId])
   @@map("expenses")
 }

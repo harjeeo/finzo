@@ -18,13 +18,15 @@ export class ReportsService {
     return { start, end };
   }
 
-  async getSummary(businessId: string, range: DateRange) {
+  async getSummary(businessId: string, range: DateRange, branchId?: string) {
     const { start, end } = this.resolveRange(range);
+    const branchFilter = branchId ? { branchId } : {};
 
     const [salesAgg, purchaseAgg, expenseAgg] = await Promise.all([
       this.prisma.salesInvoice.aggregate({
         where: {
           businessId,
+          ...branchFilter,
           invoiceDate: { gte: start, lte: end },
           status: { not: 'CANCELLED' },
         },
@@ -34,6 +36,7 @@ export class ReportsService {
       this.prisma.purchaseBill.aggregate({
         where: {
           businessId,
+          ...branchFilter,
           billDate: { gte: start, lte: end },
           status: { not: 'CANCELLED' },
         },
@@ -41,7 +44,7 @@ export class ReportsService {
         _count: true,
       }),
       this.prisma.expense.aggregate({
-        where: { businessId, expenseDate: { gte: start, lte: end } },
+        where: { businessId, ...branchFilter, expenseDate: { gte: start, lte: end } },
         _sum: { amount: true },
         _count: true,
       }),

@@ -14,6 +14,7 @@ import { DashboardModule } from './dashboard/dashboard.module.js';
 import { ReportsModule } from './reports/reports.module.js';
 import { BusinessModule } from './business/business.module.js';
 import { StaffModule } from './staff/staff.module.js';
+import { BranchesModule } from './branches/branches.module.js';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { StaffModule } from './staff/staff.module.js';
     ReportsModule,
     BusinessModule,
     StaffModule,
+    BranchesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
