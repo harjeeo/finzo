@@ -7,6 +7,9 @@ import { Register } from "../pages/Register";
 import { Customers } from "../pages/Customers";
 import { Suppliers } from "../pages/Suppliers";
 import { Products } from "../pages/Products";
+import { Sales } from "../pages/Sales";
+import { NewSalesInvoice } from "../pages/NewSalesInvoice";
+import { SalesInvoiceDetail } from "../pages/SalesInvoiceDetail";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { PublicOnlyRoute } from "./PublicOnlyRoute";
@@ -35,7 +38,9 @@ export const router = createBrowserRouter([
           { path: "customers", element: <Customers /> },
           { path: "suppliers", element: <Suppliers /> },
           { path: "products", element: <Products /> },
-          { path: "sales", element: <PlaceholderPage title="Sales" /> },
+          { path: "sales", element: <Sales /> },
+          { path: "sales/new", element: <NewSalesInvoice /> },
+          { path: "sales/:id", element: <SalesInvoiceDetail /> },
           { path: "purchase", element: <PlaceholderPage title="Purchase" /> },
           { path: "billing", element: <PlaceholderPage title="Billing / POS" /> },
           { path: "expenses", element: <PlaceholderPage title="Expenses" /> },

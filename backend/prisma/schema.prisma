@@ -44,28 +44,28 @@ model User {
 
 // A tenant. All business data is scoped to a businessId.
 model Business {
-  id           String   @id @default(cuid())
-  name         String
-  gstin        String?
-  pan          String?
-  address      String?
-  city         String?
-  state        String?
-  pincode      String?
-  logoUrl      String?
+  id                 String    @id @default(cuid())
+  name               String
+  gstin              String?
+  pan                String?
+  address            String?
+  city               String?
+  state              String?
+  pincode            String?
+  logoUrl            String?
   financialYearStart DateTime?
-  invoicePrefix String  @default("INV")
-  currency     String   @default("INR")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  invoicePrefix      String    @default("INV")
+  currency           String    @default("INR")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  memberships Membership[]
-  customers   Customer[]
-  suppliers   Supplier[]
-  products    Product[]
-  salesInvoices    SalesInvoice[]
-  purchaseBills    PurchaseBill[]
-  expenses    Expense[]
+  memberships   Membership[]
+  customers     Customer[]
+  suppliers     Supplier[]
+  products      Product[]
+  salesInvoices SalesInvoice[]
+  purchaseBills PurchaseBill[]
+  expenses      Expense[]
 
   @@map("businesses")
 }
@@ -86,36 +86,36 @@ model Membership {
 }
 
 model Customer {
-  id           String   @id @default(cuid())
-  businessId   String
-  name         String
-  phone        String?
-  email        String?
-  gstin        String?
-  address      String?
-  openingBalance Decimal @default(0) @db.Decimal(14, 2)
-  creditLimit  Decimal? @db.Decimal(14, 2)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(cuid())
+  businessId     String
+  name           String
+  phone          String?
+  email          String?
+  gstin          String?
+  address        String?
+  openingBalance Decimal  @default(0) @db.Decimal(14, 2)
+  creditLimit    Decimal? @db.Decimal(14, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  salesInvoices  SalesInvoice[]
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  salesInvoices SalesInvoice[]
 
   @@index([businessId])
   @@map("customers")
 }
 
 model Supplier {
-  id           String   @id @default(cuid())
-  businessId   String
-  name         String
-  phone        String?
-  email        String?
-  gstin        String?
-  address      String?
-  openingBalance Decimal @default(0) @db.Decimal(14, 2)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(cuid())
+  businessId     String
+  name           String
+  phone          String?
+  email          String?
+  gstin          String?
+  address        String?
+  openingBalance Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
   purchaseBills PurchaseBill[]
@@ -125,24 +125,25 @@ model Supplier {
 }
 
 model Product {
-  id           String   @id @default(cuid())
-  businessId   String
-  name         String
-  sku          String?
-  barcode      String?
-  category     String?
-  unit         String   @default("PCS")
-  hsnCode      String?
-  purchasePrice Decimal @default(0) @db.Decimal(14, 2)
-  sellingPrice  Decimal @default(0) @db.Decimal(14, 2)
-  gstRate       Decimal @default(0) @db.Decimal(5, 2)
-  openingStock  Decimal @default(0) @db.Decimal(14, 2)
-  currentStock  Decimal @default(0) @db.Decimal(14, 2)
-  minStockLevel Decimal @default(0) @db.Decimal(14, 2)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id            String   @id @default(cuid())
+  businessId    String
+  name          String
+  sku           String?
+  barcode       String?
+  category      String?
+  unit          String   @default("PCS")
+  hsnCode       String?
+  purchasePrice Decimal  @default(0) @db.Decimal(14, 2)
+  sellingPrice  Decimal  @default(0) @db.Decimal(14, 2)
+  gstRate       Decimal  @default(0) @db.Decimal(5, 2)
+  openingStock  Decimal  @default(0) @db.Decimal(14, 2)
+  currentStock  Decimal  @default(0) @db.Decimal(14, 2)
+  minStockLevel Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  business  Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business          Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  salesInvoiceItems SalesInvoiceItem[]
 
   @@index([businessId])
   @@map("products")
@@ -163,12 +164,31 @@ model SalesInvoice {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  customer Customer @relation(fields: [customerId], references: [id])
+  business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer           @relation(fields: [customerId], references: [id])
+  items    SalesInvoiceItem[]
 
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
   @@map("sales_invoices")
+}
+
+model SalesInvoiceItem {
+  id             String  @id @default(cuid())
+  salesInvoiceId String
+  productId      String
+  productName    String
+  quantity       Decimal @db.Decimal(14, 2)
+  unitPrice      Decimal @db.Decimal(14, 2)
+  gstRate        Decimal @db.Decimal(5, 2)
+  taxAmount      Decimal @db.Decimal(14, 2)
+  lineTotal      Decimal @db.Decimal(14, 2)
+
+  salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id])
+
+  @@index([salesInvoiceId])
+  @@map("sales_invoice_items")
 }
 
 model PurchaseBill {
