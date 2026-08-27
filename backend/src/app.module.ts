@@ -12,6 +12,8 @@ import { PurchasesModule } from './purchases/purchases.module.js';
 import { ExpensesModule } from './expenses/expenses.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
 import { ReportsModule } from './reports/reports.module.js';
+import { BusinessModule } from './business/business.module.js';
+import { StaffModule } from './staff/staff.module.js';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { ReportsModule } from './reports/reports.module.js';
     ExpensesModule,
     DashboardModule,
     ReportsModule,
+    BusinessModule,
+    StaffModule,
   ],
   controllers: [AppController],
   providers: [AppService],
