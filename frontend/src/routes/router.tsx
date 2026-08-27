@@ -20,6 +20,7 @@ import { Settings } from "../pages/Settings";
 import { Billing } from "../pages/Billing";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { PublicOnlyRoute } from "./PublicOnlyRoute";
+import { RequireRole } from "./RequireRole";
 
 export const router = createBrowserRouter([
   {
@@ -48,14 +49,24 @@ export const router = createBrowserRouter([
           { path: "sales", element: <Sales /> },
           { path: "sales/new", element: <NewSalesInvoice /> },
           { path: "sales/:id", element: <SalesInvoiceDetail /> },
-          { path: "purchase", element: <Purchase /> },
-          { path: "purchase/new", element: <NewPurchaseBill /> },
-          { path: "purchase/:id", element: <PurchaseBillDetail /> },
           { path: "billing", element: <Billing /> },
-          { path: "expenses", element: <Expenses /> },
-          { path: "reports", element: <Reports /> },
-          { path: "staff", element: <Staff /> },
-          { path: "settings", element: <Settings /> },
+          {
+            element: <RequireRole roles={["MANAGER", "ACCOUNTANT"]} />,
+            children: [
+              { path: "purchase", element: <Purchase /> },
+              { path: "purchase/new", element: <NewPurchaseBill /> },
+              { path: "purchase/:id", element: <PurchaseBillDetail /> },
+              { path: "expenses", element: <Expenses /> },
+              { path: "reports", element: <Reports /> },
+            ],
+          },
+          {
+            element: <RequireRole roles={["MANAGER"]} />,
+            children: [
+              { path: "staff", element: <Staff /> },
+              { path: "settings", element: <Settings /> },
+            ],
+          },
         ],
       },
     ],

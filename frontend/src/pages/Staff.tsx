@@ -14,6 +14,7 @@ const roles = ["MANAGER", "ACCOUNTANT", "CASHIER", "STAFF"];
 
 export function Staff() {
   const { accessToken, user } = useAuth();
+  const isOwner = user?.role === "OWNER";
   const [members, setMembers] = useState<StaffMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -67,13 +68,15 @@ export function Staff() {
     <div>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Staff</h1>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
-        >
-          <Add01Icon size={18} />
-          Add Staff
-        </button>
+        {isOwner && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+          >
+            <Add01Icon size={18} />
+            Add Staff
+          </button>
+        )}
       </div>
 
       <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -93,7 +96,6 @@ export function Staff() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {members.map((member) => {
-                const isOwner = member.role === "OWNER";
                 const isSelf = member.user.id === user?.sub;
                 return (
                   <tr key={member.id}>
@@ -107,11 +109,11 @@ export function Staff() {
                       {member.user.email}
                     </td>
                     <td className="px-4 py-3">
-                      {isOwner ? (
+                      {member.role === "OWNER" ? (
                         <span className="rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700">
                           OWNER
                         </span>
-                      ) : (
+                      ) : isOwner ? (
                         <select
                           value={member.role}
                           onChange={(e) =>
@@ -125,10 +127,14 @@ export function Staff() {
                             </option>
                           ))}
                         </select>
+                      ) : (
+                        <span className="text-xs text-gray-600">
+                          {member.role}
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      {!isOwner && (
+                      {isOwner && member.role !== "OWNER" && (
                         <div className="flex justify-end">
                           <button
                             onClick={() => handleRemove(member)}

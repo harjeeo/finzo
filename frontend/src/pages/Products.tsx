@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Add01Icon, Delete02Icon, PencilEdit01Icon } from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
+import { canManageCatalog, hasRole } from "../lib/permissions";
 import {
   createProduct,
   deleteProduct,
@@ -12,7 +13,8 @@ import {
 import { ProductFormModal } from "../components/ProductFormModal";
 
 export function Products() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
+  const canWrite = hasRole(user?.role, canManageCatalog);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,13 +63,15 @@ export function Products() {
     <div>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Products</h1>
-        <button
-          onClick={() => setModalState({ mode: "create" })}
-          className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
-        >
-          <Add01Icon size={18} />
-          Add Product
-        </button>
+        {canWrite && (
+          <button
+            onClick={() => setModalState({ mode: "create" })}
+            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+          >
+            <Add01Icon size={18} />
+            Add Product
+          </button>
+        )}
       </div>
 
       <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -89,7 +93,7 @@ export function Products() {
                 <th className="px-4 py-3 font-medium">Selling Price</th>
                 <th className="px-4 py-3 font-medium">GST %</th>
                 <th className="px-4 py-3 font-medium">Stock</th>
-                <th className="px-4 py-3"></th>
+                {canWrite && <th className="px-4 py-3"></th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -125,26 +129,28 @@ export function Products() {
                         {product.currentStock} {product.unit}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() =>
-                            setModalState({ mode: "edit", product })
-                          }
-                          className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                          aria-label="Edit"
-                        >
-                          <PencilEdit01Icon size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product)}
-                          className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
-                          aria-label="Delete"
-                        >
-                          <Delete02Icon size={16} />
-                        </button>
-                      </div>
-                    </td>
+                    {canWrite && (
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            onClick={() =>
+                              setModalState({ mode: "edit", product })
+                            }
+                            className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                            aria-label="Edit"
+                          >
+                            <PencilEdit01Icon size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(product)}
+                            className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                            aria-label="Delete"
+                          >
+                            <Delete02Icon size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 );
               })}

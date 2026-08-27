@@ -9,12 +9,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../common/guards/roles.guard.js';
+import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentBusinessId } from '../common/decorators/current-business-id.decorator.js';
 import { SuppliersService } from './suppliers.service.js';
 import { CreateSupplierDto } from './dto/create-supplier.dto.js';
 import { UpdateSupplierDto } from './dto/update-supplier.dto.js';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('suppliers')
 export class SuppliersController {
   constructor(private readonly suppliersService: SuppliersService) {}
@@ -29,6 +31,7 @@ export class SuppliersController {
     return this.suppliersService.findOne(businessId, id);
   }
 
+  @Roles('MANAGER')
   @Post()
   create(
     @CurrentBusinessId() businessId: string,
@@ -37,6 +40,7 @@ export class SuppliersController {
     return this.suppliersService.create(businessId, dto);
   }
 
+  @Roles('MANAGER')
   @Patch(':id')
   update(
     @CurrentBusinessId() businessId: string,
@@ -46,6 +50,7 @@ export class SuppliersController {
     return this.suppliersService.update(businessId, id, dto);
   }
 
+  @Roles('MANAGER')
   @Delete(':id')
   remove(@CurrentBusinessId() businessId: string, @Param('id') id: string) {
     return this.suppliersService.remove(businessId, id);

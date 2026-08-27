@@ -3,7 +3,8 @@ import { useAuth } from "../lib/auth-context";
 import { getBusiness, updateBusiness, type Business } from "../lib/business-api";
 
 export function Settings() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
+  const isOwner = user?.role === "OWNER";
   const [business, setBusiness] = useState<Business | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -51,11 +52,12 @@ export function Settings() {
     <div>
       <label className="block text-sm font-medium text-gray-700">{label}</label>
       <input
+        disabled={!isOwner}
         value={(business?.[key] as string) ?? ""}
         onChange={(e) =>
           setBusiness((prev) => (prev ? { ...prev, [key]: e.target.value } : prev))
         }
-        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:bg-gray-50 disabled:text-gray-500"
       />
     </div>
   );
@@ -92,18 +94,25 @@ export function Settings() {
           {field("currency", "Currency")}
         </div>
 
+        {!isOwner && (
+          <p className="text-sm text-gray-500">
+            Only the business owner can edit these settings.
+          </p>
+        )}
         {error && <p className="text-sm text-red-600">{error}</p>}
         {success && <p className="text-sm text-green-600">Saved successfully.</p>}
 
-        <div className="flex justify-end pt-2">
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
-          >
-            {isSaving ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
+        {isOwner && (
+          <div className="flex justify-end pt-2">
+            <button
+              type="submit"
+              disabled={isSaving}
+              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-60"
+            >
+              {isSaving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        )}
       </form>
     </div>
   );

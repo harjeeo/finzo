@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft01Icon, Delete02Icon } from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
+import { canDeleteSales, hasRole } from "../lib/permissions";
 import {
   deleteSalesInvoice,
   getSalesInvoice,
@@ -10,7 +11,8 @@ import {
 
 export function SalesInvoiceDetail() {
   const { id } = useParams<{ id: string }>();
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
+  const canDelete = hasRole(user?.role, canDeleteSales);
   const navigate = useNavigate();
 
   const [invoice, setInvoice] = useState<SalesInvoice | null>(null);
@@ -58,13 +60,15 @@ export function SalesInvoiceDetail() {
             {new Date(invoice.invoiceDate).toLocaleDateString("en-IN")}
           </p>
         </div>
-        <button
-          onClick={handleDelete}
-          className="flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
-        >
-          <Delete02Icon size={16} />
-          Delete
-        </button>
+        {canDelete && (
+          <button
+            onClick={handleDelete}
+            className="flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+          >
+            <Delete02Icon size={16} />
+            Delete
+          </button>
+        )}
       </div>
 
       <div className="mt-6 max-w-3xl overflow-hidden rounded-xl border border-gray-200 bg-white">

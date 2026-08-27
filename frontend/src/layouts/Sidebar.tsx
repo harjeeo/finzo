@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { Logout01Icon } from "hugeicons-react";
 import { navItems } from "./navigation";
 import { useAuth } from "../lib/auth-context";
+import { hasRole } from "../lib/permissions";
 
 export function Sidebar() {
   const { user, logout } = useAuth();
@@ -12,6 +13,10 @@ export function Sidebar() {
     navigate("/login", { replace: true });
   };
 
+  const visibleItems = navItems.filter(
+    (item) => !item.roles || hasRole(user?.role, item.roles),
+  );
+
   return (
     <aside className="flex h-screen w-64 shrink-0 flex-col border-r border-gray-200 bg-white">
       <div className="flex h-16 items-center px-6">
@@ -19,7 +24,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
-        {navItems.map(({ label, path, icon: Icon }) => (
+        {visibleItems.map(({ label, path, icon: Icon }) => (
           <NavLink
             key={path}
             to={path}

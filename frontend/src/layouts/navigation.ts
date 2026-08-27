@@ -13,11 +13,14 @@ import {
 } from "hugeicons-react";
 import type { HugeiconsIconProps } from "@hugeicons/react";
 import type { ReactElement } from "react";
+import type { Role } from "../lib/permissions";
 
 export interface NavItem {
   label: string;
   path: string;
   icon: (props: Omit<HugeiconsIconProps, "icon">) => ReactElement;
+  /** Roles allowed to see this item, in addition to OWNER. Omit for "everyone". */
+  roles?: Role[];
 }
 
 export const navItems: NavItem[] = [
@@ -26,10 +29,30 @@ export const navItems: NavItem[] = [
   { label: "Suppliers", path: "/suppliers", icon: TruckDeliveryIcon },
   { label: "Products", path: "/products", icon: Package01Icon },
   { label: "Sales", path: "/sales", icon: ShoppingCart01Icon },
-  { label: "Purchase", path: "/purchase", icon: Invoice01Icon },
+  {
+    label: "Purchase",
+    path: "/purchase",
+    icon: Invoice01Icon,
+    roles: ["MANAGER", "ACCOUNTANT"],
+  },
   { label: "Billing", path: "/billing", icon: ReceiptDollarIcon },
-  { label: "Expenses", path: "/expenses", icon: Wallet01Icon },
-  { label: "Reports", path: "/reports", icon: Analytics01Icon },
-  { label: "Staff", path: "/staff", icon: UserMultipleIcon },
-  { label: "Settings", path: "/settings", icon: Setting07Icon },
+  {
+    label: "Expenses",
+    path: "/expenses",
+    icon: Wallet01Icon,
+    roles: ["MANAGER", "ACCOUNTANT"],
+  },
+  {
+    label: "Reports",
+    path: "/reports",
+    icon: Analytics01Icon,
+    roles: ["MANAGER", "ACCOUNTANT"],
+  },
+  {
+    label: "Staff",
+    path: "/staff",
+    icon: UserMultipleIcon,
+    roles: ["MANAGER"],
+  },
+  { label: "Settings", path: "/settings", icon: Setting07Icon, roles: ["MANAGER"] },
 ];

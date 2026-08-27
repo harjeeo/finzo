@@ -9,12 +9,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../common/guards/roles.guard.js';
+import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentBusinessId } from '../common/decorators/current-business-id.decorator.js';
 import { ProductsService } from './products.service.js';
 import { CreateProductDto } from './dto/create-product.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
@@ -29,6 +31,7 @@ export class ProductsController {
     return this.productsService.findOne(businessId, id);
   }
 
+  @Roles('MANAGER')
   @Post()
   create(
     @CurrentBusinessId() businessId: string,
@@ -37,6 +40,7 @@ export class ProductsController {
     return this.productsService.create(businessId, dto);
   }
 
+  @Roles('MANAGER')
   @Patch(':id')
   update(
     @CurrentBusinessId() businessId: string,
@@ -46,6 +50,7 @@ export class ProductsController {
     return this.productsService.update(businessId, id, dto);
   }
 
+  @Roles('MANAGER')
   @Delete(':id')
   remove(@CurrentBusinessId() businessId: string, @Param('id') id: string) {
     return this.productsService.remove(businessId, id);

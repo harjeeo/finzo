@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Add01Icon, Delete02Icon, PencilEdit01Icon } from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
+import { canCreateCustomers, canManageCustomersWrite, hasRole } from "../lib/permissions";
 import {
   createCustomer,
   deleteCustomer,
@@ -12,7 +13,9 @@ import {
 import { CustomerFormModal } from "../components/CustomerFormModal";
 
 export function Customers() {
-  const { accessToken } = useAuth();
+  const { accessToken, user } = useAuth();
+  const canCreate = hasRole(user?.role, canCreateCustomers);
+  const canEditDelete = hasRole(user?.role, canManageCustomersWrite);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,13 +64,15 @@ export function Customers() {
     <div>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-900">Customers</h1>
-        <button
-          onClick={() => setModalState({ mode: "create" })}
-          className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
-        >
-          <Add01Icon size={18} />
-          Add Customer
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setModalState({ mode: "create" })}
+            className="flex items-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+          >
+            <Add01Icon size={18} />
+            Add Customer
+          </button>
+        )}
       </div>
 
       <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
@@ -88,7 +93,7 @@ export function Customers() {
                 <th className="px-4 py-3 font-medium">Email</th>
                 <th className="px-4 py-3 font-medium">GSTIN</th>
                 <th className="px-4 py-3 font-medium">Opening Balance</th>
-                <th className="px-4 py-3"></th>
+                {canEditDelete && <th className="px-4 py-3"></th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -109,26 +114,28 @@ export function Customers() {
                   <td className="px-4 py-3 text-gray-600">
                     ₹{customer.openingBalance}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() =>
-                          setModalState({ mode: "edit", customer })
-                        }
-                        className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                        aria-label="Edit"
-                      >
-                        <PencilEdit01Icon size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(customer)}
-                        className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
-                        aria-label="Delete"
-                      >
-                        <Delete02Icon size={16} />
-                      </button>
-                    </div>
-                  </td>
+                  {canEditDelete && (
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() =>
+                            setModalState({ mode: "edit", customer })
+                          }
+                          className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                          aria-label="Edit"
+                        >
+                          <PencilEdit01Icon size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(customer)}
+                          className="rounded p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                          aria-label="Delete"
+                        >
+                          <Delete02Icon size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
