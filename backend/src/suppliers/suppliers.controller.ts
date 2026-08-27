@@ -31,6 +31,11 @@ export class SuppliersController {
     return this.suppliersService.findOne(businessId, id);
   }
 
+  @Get(':id/ledger')
+  getLedger(@CurrentBusinessId() businessId: string, @Param('id') id: string) {
+    return this.suppliersService.getLedger(businessId, id);
+  }
+
   @Roles('MANAGER')
   @Post()
   create(

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Add01Icon, Delete02Icon, PencilEdit01Icon } from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
 import { canCreateCustomers, canManageCustomersWrite, hasRole } from "../lib/permissions";
@@ -99,8 +100,13 @@ export function Customers() {
             <tbody className="divide-y divide-gray-100">
               {customers.map((customer) => (
                 <tr key={customer.id}>
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    {customer.name}
+                  <td className="px-4 py-3 font-medium">
+                    <Link
+                      to={`/customers/${customer.id}`}
+                      className="text-purple-600 hover:underline"
+                    >
+                      {customer.name}
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-gray-600">
                     {customer.phone || "-"}

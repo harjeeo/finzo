@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { Add01Icon, Delete02Icon, PencilEdit01Icon } from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
 import { canManageCatalog, hasRole } from "../lib/permissions";
@@ -98,8 +99,13 @@ export function Suppliers() {
             <tbody className="divide-y divide-gray-100">
               {suppliers.map((supplier) => (
                 <tr key={supplier.id}>
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    {supplier.name}
+                  <td className="px-4 py-3 font-medium">
+                    <Link
+                      to={`/suppliers/${supplier.id}`}
+                      className="text-purple-600 hover:underline"
+                    >
+                      {supplier.name}
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-gray-600">
                     {supplier.phone || "-"}

@@ -20,6 +20,8 @@ import { Settings } from "../pages/Settings";
 import { Billing } from "../pages/Billing";
 import { SalesInvoicePrint } from "../pages/SalesInvoicePrint";
 import { PurchaseBillPrint } from "../pages/PurchaseBillPrint";
+import { CustomerLedgerPage } from "../pages/CustomerLedgerPage";
+import { SupplierLedgerPage } from "../pages/SupplierLedgerPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { PublicOnlyRoute } from "./PublicOnlyRoute";
 import { RequireRole } from "./RequireRole";
@@ -48,7 +50,9 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <Dashboard /> },
           { path: "customers", element: <Customers /> },
+          { path: "customers/:id", element: <CustomerLedgerPage /> },
           { path: "suppliers", element: <Suppliers /> },
+          { path: "suppliers/:id", element: <SupplierLedgerPage /> },
           { path: "products", element: <Products /> },
           { path: "sales", element: <Sales /> },
           { path: "sales/new", element: <NewSalesInvoice /> },

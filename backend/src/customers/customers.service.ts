@@ -43,4 +43,67 @@ export class CustomersService {
     await this.prisma.customer.delete({ where: { id } });
     return { success: true };
   }
+
+  async getLedger(businessId: string, id: string) {
+    const customer = await this.findOne(businessId, id);
+
+    const invoices = await this.prisma.salesInvoice.findMany({
+      where: { businessId, customerId: id, status: { not: 'CANCELLED' } },
+      select: {
+        id: true,
+        invoiceNumber: true,
+        invoiceDate: true,
+        grandTotal: true,
+      },
+    });
+
+    const payments = await this.prisma.salesPayment.findMany({
+      where: { salesInvoice: { businessId, customerId: id } },
+      select: {
+        id: true,
+        amount: true,
+        paymentDate: true,
+        paymentMode: true,
+        salesInvoice: { select: { invoiceNumber: true } },
+      },
+    });
+
+    type Entry = {
+      date: Date;
+      type: 'INVOICE' | 'PAYMENT';
+      reference: string;
+      debit: number;
+      credit: number;
+    };
+
+    const entries: Entry[] = [
+      ...invoices.map((inv) => ({
+        date: inv.invoiceDate,
+        type: 'INVOICE' as const,
+        reference: inv.invoiceNumber,
+        debit: Number(inv.grandTotal),
+        credit: 0,
+      })),
+      ...payments.map((p) => ({
+        date: p.paymentDate,
+        type: 'PAYMENT' as const,
+        reference: `${p.salesInvoice.invoiceNumber} · ${p.paymentMode}`,
+        debit: 0,
+        credit: Number(p.amount),
+      })),
+    ].sort((a, b) => a.date.getTime() - b.date.getTime());
+
+    let balance = Number(customer.openingBalance);
+    const transactions = entries.map((entry) => {
+      balance += entry.debit - entry.credit;
+      return { ...entry, balance };
+    });
+
+    return {
+      customer,
+      openingBalance: Number(customer.openingBalance),
+      transactions,
+      outstandingBalance: balance,
+    };
+  }
 }

@@ -31,6 +31,11 @@ export class CustomersController {
     return this.customersService.findOne(businessId, id);
   }
 
+  @Get(':id/ledger')
+  getLedger(@CurrentBusinessId() businessId: string, @Param('id') id: string) {
+    return this.customersService.getLedger(businessId, id);
+  }
+
   @Roles('MANAGER', 'CASHIER')
   @Post()
   create(
