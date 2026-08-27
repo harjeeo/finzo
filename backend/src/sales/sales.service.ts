@@ -5,6 +5,9 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { BranchesService } from '../branches/branches.service.js';
+import { AccountsService } from '../accounting/accounts.service.js';
+import { JournalService, type PostLine } from '../accounting/journal.service.js';
+import { SYSTEM_ACCOUNT_CODES, paymentModeAccountCode } from '../accounting/default-accounts.js';
 import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
 import { CreateSalesReturnDto } from './dto/create-sales-return.dto.js';
@@ -14,6 +17,8 @@ export class SalesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly branchesService: BranchesService,
+    private readonly accountsService: AccountsService,
+    private readonly journalService: JournalService,
   ) {}
 
   findAll(businessId: string, branchId?: string) {
@@ -138,6 +143,23 @@ export class SalesService {
         });
       }
 
+      const [salesReturnsAccount, gstPayableAccount, arAccount] = await Promise.all([
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.SALES_RETURNS, tx),
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.GST_PAYABLE, tx),
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tx),
+      ]);
+      await this.journalService.postEntry(tx, {
+        businessId,
+        sourceType: 'SALES_RETURN',
+        sourceId: salesReturn.id,
+        narration: `Sales return ${salesReturn.returnNumber}`,
+        lines: [
+          { accountId: salesReturnsAccount.id, debit: subtotal },
+          { accountId: gstPayableAccount.id, debit: taxTotal },
+          { accountId: arAccount.id, credit: grandTotal },
+        ],
+      });
+
       return salesReturn;
     });
   }
@@ -163,7 +185,7 @@ export class SalesService {
         : 'PARTIALLY_PAID';
 
     return this.prisma.$transaction(async (tx) => {
-      await tx.salesPayment.create({
+      const payment = await tx.salesPayment.create({
         data: {
           salesInvoiceId: id,
           amount: dto.amount,
@@ -171,6 +193,25 @@ export class SalesService {
           reference: dto.reference,
           paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : undefined,
         },
+      });
+
+      const [cashOrBankAccount, arAccount] = await Promise.all([
+        this.accountsService.getSystemAccount(
+          businessId,
+          paymentModeAccountCode(dto.paymentMode),
+          tx,
+        ),
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tx),
+      ]);
+      await this.journalService.postEntry(tx, {
+        businessId,
+        sourceType: 'SALES_PAYMENT',
+        sourceId: payment.id,
+        narration: `Payment received for invoice ${invoice.invoiceNumber}`,
+        lines: [
+          { accountId: cashOrBankAccount.id, debit: dto.amount },
+          { accountId: arAccount.id, credit: dto.amount },
+        ],
       });
 
       return tx.salesInvoice.update({
@@ -303,6 +344,35 @@ export class SalesService {
         });
       }
 
+      const [salesAccount, gstPayableAccount, arAccount] = await Promise.all([
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.SALES, tx),
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.GST_PAYABLE, tx),
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.ACCOUNTS_RECEIVABLE, tx),
+      ]);
+      const balanceDue = grandTotal - amountPaid;
+      const journalLines: PostLine[] = [
+        { accountId: salesAccount.id, credit: subtotal - discountTotal },
+        { accountId: gstPayableAccount.id, credit: taxTotal },
+      ];
+      if (balanceDue > 0) {
+        journalLines.push({ accountId: arAccount.id, debit: balanceDue });
+      }
+      if (amountPaid > 0) {
+        const cashOrBankAccount = await this.accountsService.getSystemAccount(
+          businessId,
+          paymentModeAccountCode(dto.paymentMode),
+          tx,
+        );
+        journalLines.push({ accountId: cashOrBankAccount.id, debit: amountPaid });
+      }
+      await this.journalService.postEntry(tx, {
+        businessId,
+        sourceType: 'SALES_INVOICE',
+        sourceId: invoice.id,
+        narration: `Sales invoice ${invoiceNumber}`,
+        lines: journalLines,
+      });
+
       return invoice;
     });
   }
@@ -317,6 +387,16 @@ export class SalesService {
           data: { currentStock: { increment: Number(item.quantity) } },
         });
       }
+
+      const sourceIds = [
+        id,
+        ...invoice.payments.map((p) => p.id),
+        ...invoice.returns.map((r) => r.id),
+      ];
+      await tx.journalEntry.deleteMany({
+        where: { businessId, sourceId: { in: sourceIds } },
+      });
+
       await tx.salesInvoice.delete({ where: { id } });
       return { success: true };
     });

@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import type { SignOptions } from 'jsonwebtoken';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { DEFAULT_ACCOUNTS } from '../accounting/default-accounts.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import type { JwtPayload } from './types/jwt-payload.type.js';
@@ -61,6 +62,16 @@ export class AuthService {
           name: 'Main Branch',
           isDefault: true,
         },
+      });
+
+      await tx.account.createMany({
+        data: DEFAULT_ACCOUNTS.map((a) => ({
+          businessId: createdBusiness.id,
+          code: a.code,
+          name: a.name,
+          type: a.type,
+          isSystem: true,
+        })),
       });
 
       return { user: createdUser, business: createdBusiness };

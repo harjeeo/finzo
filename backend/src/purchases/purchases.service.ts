@@ -5,6 +5,9 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { BranchesService } from '../branches/branches.service.js';
+import { AccountsService } from '../accounting/accounts.service.js';
+import { JournalService, type PostLine } from '../accounting/journal.service.js';
+import { SYSTEM_ACCOUNT_CODES, paymentModeAccountCode } from '../accounting/default-accounts.js';
 import { CreatePurchaseBillDto } from './dto/create-purchase-bill.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
 import { CreatePurchaseReturnDto } from './dto/create-purchase-return.dto.js';
@@ -14,6 +17,8 @@ export class PurchasesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly branchesService: BranchesService,
+    private readonly accountsService: AccountsService,
+    private readonly journalService: JournalService,
   ) {}
 
   findAll(businessId: string, branchId?: string) {
@@ -154,6 +159,23 @@ export class PurchasesService {
         });
       }
 
+      const [purchaseReturnsAccount, gstInputAccount, apAccount] = await Promise.all([
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.PURCHASE_RETURNS, tx),
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.GST_INPUT, tx),
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.ACCOUNTS_PAYABLE, tx),
+      ]);
+      await this.journalService.postEntry(tx, {
+        businessId,
+        sourceType: 'PURCHASE_RETURN',
+        sourceId: purchaseReturn.id,
+        narration: `Purchase return ${purchaseReturn.returnNumber}`,
+        lines: [
+          { accountId: apAccount.id, debit: grandTotal },
+          { accountId: purchaseReturnsAccount.id, credit: subtotal },
+          { accountId: gstInputAccount.id, credit: taxTotal },
+        ],
+      });
+
       return purchaseReturn;
     });
   }
@@ -177,7 +199,7 @@ export class PurchasesService {
       newAmountPaid >= Number(bill.grandTotal) ? 'PAID' : 'PARTIALLY_PAID';
 
     return this.prisma.$transaction(async (tx) => {
-      await tx.purchasePayment.create({
+      const payment = await tx.purchasePayment.create({
         data: {
           purchaseBillId: id,
           amount: dto.amount,
@@ -185,6 +207,25 @@ export class PurchasesService {
           reference: dto.reference,
           paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : undefined,
         },
+      });
+
+      const [apAccount, cashOrBankAccount] = await Promise.all([
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.ACCOUNTS_PAYABLE, tx),
+        this.accountsService.getSystemAccount(
+          businessId,
+          paymentModeAccountCode(dto.paymentMode),
+          tx,
+        ),
+      ]);
+      await this.journalService.postEntry(tx, {
+        businessId,
+        sourceType: 'PURCHASE_PAYMENT',
+        sourceId: payment.id,
+        narration: `Payment made for bill ${bill.billNumber}`,
+        lines: [
+          { accountId: apAccount.id, debit: dto.amount },
+          { accountId: cashOrBankAccount.id, credit: dto.amount },
+        ],
       });
 
       return tx.purchaseBill.update({
@@ -299,6 +340,26 @@ export class PurchasesService {
         });
       }
 
+      const [purchasesAccount, gstInputAccount, apAccount] = await Promise.all([
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.PURCHASES, tx),
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.GST_INPUT, tx),
+        this.accountsService.getSystemAccount(businessId, SYSTEM_ACCOUNT_CODES.ACCOUNTS_PAYABLE, tx),
+      ]);
+      const lines: PostLine[] = [
+        { accountId: purchasesAccount.id, debit: subtotal - discountTotal },
+        { accountId: apAccount.id, credit: grandTotal },
+      ];
+      if (taxTotal > 0) {
+        lines.push({ accountId: gstInputAccount.id, debit: taxTotal });
+      }
+      await this.journalService.postEntry(tx, {
+        businessId,
+        sourceType: 'PURCHASE_BILL',
+        sourceId: bill.id,
+        narration: `Purchase bill ${billNumber}`,
+        lines,
+      });
+
       return bill;
     });
   }
@@ -313,6 +374,16 @@ export class PurchasesService {
           data: { currentStock: { decrement: Number(item.quantity) } },
         });
       }
+
+      const sourceIds = [
+        id,
+        ...bill.payments.map((p) => p.id),
+        ...bill.returns.map((r) => r.id),
+      ];
+      await tx.journalEntry.deleteMany({
+        where: { businessId, sourceId: { in: sourceIds } },
+      });
+
       await tx.purchaseBill.delete({ where: { id } });
       return { success: true };
     });

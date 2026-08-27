@@ -15,6 +15,7 @@ import { NewPurchaseBill } from "../pages/NewPurchaseBill";
 import { PurchaseBillDetail } from "../pages/PurchaseBillDetail";
 import { Expenses } from "../pages/Expenses";
 import { Reports } from "../pages/Reports";
+import { Accounting } from "../pages/Accounting";
 import { Staff } from "../pages/Staff";
 import { Branches } from "../pages/Branches";
 import { Settings } from "../pages/Settings";
@@ -67,6 +68,7 @@ export const router = createBrowserRouter([
               { path: "purchase/:id", element: <PurchaseBillDetail /> },
               { path: "expenses", element: <Expenses /> },
               { path: "reports", element: <Reports /> },
+              { path: "accounting", element: <Accounting /> },
             ],
           },
           {

@@ -26,6 +26,25 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  INCOME
+  EXPENSE
+}
+
+enum JournalSourceType {
+  MANUAL
+  SALES_INVOICE
+  SALES_PAYMENT
+  SALES_RETURN
+  PURCHASE_BILL
+  PURCHASE_PAYMENT
+  PURCHASE_RETURN
+  EXPENSE
+}
+
 // A platform-level user. Can belong to multiple businesses via Membership.
 model User {
   id           String   @id @default(cuid())
@@ -69,8 +88,64 @@ model Business {
   salesReturns    SalesReturn[]
   purchaseReturns PurchaseReturn[]
   branches        Branch[]
+  accounts        Account[]
+  journalEntries  JournalEntry[]
 
   @@map("businesses")
+}
+
+model Account {
+  id             String      @id @default(cuid())
+  businessId     String
+  code           String
+  name           String
+  type           AccountType
+  isSystem       Boolean     @default(false)
+  openingBalance Decimal     @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  business     Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  journalLines JournalEntryLine[]
+
+  @@unique([businessId, code])
+  @@index([businessId])
+  @@map("accounts")
+}
+
+model JournalEntry {
+  id          String            @id @default(cuid())
+  businessId  String
+  entryNumber String
+  entryDate   DateTime          @default(now())
+  narration   String?
+  sourceType  JournalSourceType @default(MANUAL)
+  sourceId    String?
+  createdAt   DateTime          @default(now())
+
+  business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  lines    JournalEntryLine[]
+
+  @@unique([businessId, entryNumber])
+  @@index([businessId])
+  @@index([sourceType, sourceId])
+  @@map("journal_entries")
+}
+
+model JournalEntryLine {
+  id             String  @id @default(cuid())
+  journalEntryId String
+  accountId      String
+  debit          Decimal @default(0) @db.Decimal(14, 2)
+  credit         Decimal @default(0) @db.Decimal(14, 2)
+  description    String?
+
+  journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      Account      @relation(fields: [accountId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@map("journal_entry_lines")
 }
 
 model Branch {
