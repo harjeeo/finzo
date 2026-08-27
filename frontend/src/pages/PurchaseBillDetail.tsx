@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft01Icon, Delete02Icon, PrinterIcon } from "hugeicons-react";
+import {
+  ArrowLeft01Icon,
+  Delete02Icon,
+  PrinterIcon,
+  ReturnRequestIcon,
+} from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
 import {
   addPurchasePayment,
+  createPurchaseReturn,
   deletePurchaseBill,
   getPurchaseBill,
   type PurchaseBill,
 } from "../lib/purchases-api";
 import { RecordPaymentModal } from "../components/RecordPaymentModal";
+import { CreateReturnModal } from "../components/CreateReturnModal";
 
 export function PurchaseBillDetail() {
   const { id } = useParams<{ id: string }>();
@@ -19,15 +26,20 @@ export function PurchaseBillDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
 
-  useEffect(() => {
+  const loadBill = () => {
     if (!accessToken || !id) return;
-    getPurchaseBill(accessToken, id)
+    return getPurchaseBill(accessToken, id)
       .then(setBill)
       .catch((err) =>
         setError(err instanceof Error ? err.message : "Failed to load"),
-      )
-      .finally(() => setIsLoading(false));
+      );
+  };
+
+  useEffect(() => {
+    loadBill()?.finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, id]);
 
   const handleDelete = async () => {
@@ -48,12 +60,40 @@ export function PurchaseBillDetail() {
     setShowPaymentModal(false);
   };
 
+  const handleCreateReturn = async (
+    items: { productId: string; quantity: number }[],
+  ) => {
+    if (!accessToken || !id) return;
+    await createPurchaseReturn(accessToken, id, { items });
+    setShowReturnModal(false);
+    await loadBill();
+  };
+
   if (isLoading) return <p className="text-sm text-gray-500">Loading...</p>;
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!bill) return null;
 
   const balanceDue = Number(bill.grandTotal) - Number(bill.amountPaid);
   const canRecordPayment = balanceDue > 0 && bill.status !== "CANCELLED";
+
+  const returnedByProduct = new Map<string, number>();
+  for (const ret of bill.returns ?? []) {
+    for (const item of ret.items) {
+      returnedByProduct.set(
+        item.productId,
+        (returnedByProduct.get(item.productId) ?? 0) + Number(item.quantity),
+      );
+    }
+  }
+  const returnableItems = (bill.items ?? [])
+    .map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      maxReturnable:
+        Number(item.quantity) - (returnedByProduct.get(item.productId) ?? 0),
+    }))
+    .filter((item) => item.maxReturnable > 0);
+  const canReturn = bill.status !== "CANCELLED" && returnableItems.length > 0;
 
   return (
     <div>
@@ -83,6 +123,15 @@ export function PurchaseBillDetail() {
             <PrinterIcon size={16} />
             Print
           </Link>
+          {canReturn && (
+            <button
+              onClick={() => setShowReturnModal(true)}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <ReturnRequestIcon size={16} />
+              Return Items
+            </button>
+          )}
           <button
             onClick={handleDelete}
             className="flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
@@ -197,11 +246,58 @@ export function PurchaseBillDetail() {
         )}
       </div>
 
+      {bill.returns && bill.returns.length > 0 && (
+        <div className="mt-6 max-w-3xl overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-4 py-3">
+            <h2 className="text-sm font-medium text-gray-700">
+              Debit Notes (Returns)
+            </h2>
+          </div>
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">Debit Note #</th>
+                <th className="px-4 py-2 font-medium">Date</th>
+                <th className="px-4 py-2 font-medium">Items</th>
+                <th className="px-4 py-2 font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {bill.returns.map((ret) => (
+                <tr key={ret.id}>
+                  <td className="px-4 py-2 font-medium text-gray-900">
+                    {ret.returnNumber}
+                  </td>
+                  <td className="px-4 py-2 text-gray-600">
+                    {new Date(ret.returnDate).toLocaleDateString("en-IN")}
+                  </td>
+                  <td className="px-4 py-2 text-gray-600">
+                    {ret.items.map((i) => `${i.productName} × ${i.quantity}`).join(", ")}
+                  </td>
+                  <td className="px-4 py-2 font-medium text-gray-900">
+                    ₹{ret.grandTotal}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {showPaymentModal && (
         <RecordPaymentModal
           balanceDue={balanceDue}
           onClose={() => setShowPaymentModal(false)}
           onSubmit={handleRecordPayment}
+        />
+      )}
+
+      {showReturnModal && (
+        <CreateReturnModal
+          title="Return Items"
+          items={returnableItems}
+          onClose={() => setShowReturnModal(false)}
+          onSubmit={handleCreateReturn}
         />
       )}
     </div>

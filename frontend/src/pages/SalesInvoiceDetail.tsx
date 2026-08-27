@@ -1,15 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft01Icon, Delete02Icon, PrinterIcon } from "hugeicons-react";
+import {
+  ArrowLeft01Icon,
+  Delete02Icon,
+  PrinterIcon,
+  ReturnRequestIcon,
+} from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
 import { canDeleteSales, hasRole } from "../lib/permissions";
 import {
   addSalesPayment,
+  createSalesReturn,
   deleteSalesInvoice,
   getSalesInvoice,
   type SalesInvoice,
 } from "../lib/sales-api";
 import { RecordPaymentModal } from "../components/RecordPaymentModal";
+import { CreateReturnModal } from "../components/CreateReturnModal";
 
 export function SalesInvoiceDetail() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +28,7 @@ export function SalesInvoiceDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showReturnModal, setShowReturnModal] = useState(false);
 
   const loadInvoice = () => {
     if (!accessToken || !id) return;
@@ -54,12 +62,40 @@ export function SalesInvoiceDetail() {
     setShowPaymentModal(false);
   };
 
+  const handleCreateReturn = async (
+    items: { productId: string; quantity: number }[],
+  ) => {
+    if (!accessToken || !id) return;
+    await createSalesReturn(accessToken, id, { items });
+    setShowReturnModal(false);
+    await loadInvoice();
+  };
+
   if (isLoading) return <p className="text-sm text-gray-500">Loading...</p>;
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!invoice) return null;
 
   const balanceDue = Number(invoice.grandTotal) - Number(invoice.amountPaid);
   const canRecordPayment = balanceDue > 0 && invoice.status !== "CANCELLED";
+
+  const returnedByProduct = new Map<string, number>();
+  for (const ret of invoice.returns ?? []) {
+    for (const item of ret.items) {
+      returnedByProduct.set(
+        item.productId,
+        (returnedByProduct.get(item.productId) ?? 0) + Number(item.quantity),
+      );
+    }
+  }
+  const returnableItems = (invoice.items ?? [])
+    .map((item) => ({
+      productId: item.productId,
+      productName: item.productName,
+      maxReturnable:
+        Number(item.quantity) - (returnedByProduct.get(item.productId) ?? 0),
+    }))
+    .filter((item) => item.maxReturnable > 0);
+  const canReturn = invoice.status !== "CANCELLED" && returnableItems.length > 0;
 
   return (
     <div>
@@ -89,6 +125,15 @@ export function SalesInvoiceDetail() {
             <PrinterIcon size={16} />
             Print
           </Link>
+          {canDelete && canReturn && (
+            <button
+              onClick={() => setShowReturnModal(true)}
+              className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <ReturnRequestIcon size={16} />
+              Return Items
+            </button>
+          )}
           {canDelete && (
             <button
               onClick={handleDelete}
@@ -205,11 +250,58 @@ export function SalesInvoiceDetail() {
         )}
       </div>
 
+      {invoice.returns && invoice.returns.length > 0 && (
+        <div className="mt-6 max-w-3xl overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="border-b border-gray-200 px-4 py-3">
+            <h2 className="text-sm font-medium text-gray-700">
+              Credit Notes (Returns)
+            </h2>
+          </div>
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">Credit Note #</th>
+                <th className="px-4 py-2 font-medium">Date</th>
+                <th className="px-4 py-2 font-medium">Items</th>
+                <th className="px-4 py-2 font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {invoice.returns.map((ret) => (
+                <tr key={ret.id}>
+                  <td className="px-4 py-2 font-medium text-gray-900">
+                    {ret.returnNumber}
+                  </td>
+                  <td className="px-4 py-2 text-gray-600">
+                    {new Date(ret.returnDate).toLocaleDateString("en-IN")}
+                  </td>
+                  <td className="px-4 py-2 text-gray-600">
+                    {ret.items.map((i) => `${i.productName} × ${i.quantity}`).join(", ")}
+                  </td>
+                  <td className="px-4 py-2 font-medium text-gray-900">
+                    ₹{ret.grandTotal}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       {showPaymentModal && (
         <RecordPaymentModal
           balanceDue={balanceDue}
           onClose={() => setShowPaymentModal(false)}
           onSubmit={handleRecordPayment}
+        />
+      )}
+
+      {showReturnModal && (
+        <CreateReturnModal
+          title="Return Items"
+          items={returnableItems}
+          onClose={() => setShowReturnModal(false)}
+          onSubmit={handleCreateReturn}
         />
       )}
     </div>

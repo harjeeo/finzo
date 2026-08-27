@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
+import { CreateSalesReturnDto } from './dto/create-sales-return.dto.js';
 
 @Injectable()
 export class SalesService {
@@ -26,12 +27,114 @@ export class SalesService {
         customer: true,
         items: true,
         payments: { orderBy: { paymentDate: 'desc' } },
+        returns: {
+          include: { items: true },
+          orderBy: { returnDate: 'desc' },
+        },
       },
     });
     if (!invoice) {
       throw new NotFoundException('Sales invoice not found');
     }
     return invoice;
+  }
+
+  async createReturn(businessId: string, id: string, dto: CreateSalesReturnDto) {
+    const invoice = await this.findOne(businessId, id);
+
+    if (invoice.status === 'CANCELLED') {
+      throw new BadRequestException('Cannot return items on a cancelled invoice');
+    }
+
+    const invoiceItemMap = new Map(
+      invoice.items.map((item) => [item.productId, item]),
+    );
+    const alreadyReturned = new Map<string, number>();
+    for (const ret of invoice.returns) {
+      for (const item of ret.items) {
+        alreadyReturned.set(
+          item.productId,
+          (alreadyReturned.get(item.productId) ?? 0) + Number(item.quantity),
+        );
+      }
+    }
+
+    const lineItems = dto.items.map((item) => {
+      const invoiceItem = invoiceItemMap.get(item.productId);
+      if (!invoiceItem) {
+        throw new BadRequestException(
+          `Product ${item.productId} was not part of this invoice`,
+        );
+      }
+      const returnedSoFar = alreadyReturned.get(item.productId) ?? 0;
+      const maxReturnable = Number(invoiceItem.quantity) - returnedSoFar;
+      if (item.quantity > maxReturnable) {
+        throw new BadRequestException(
+          `Cannot return ${item.quantity} of "${invoiceItem.productName}" (max returnable: ${maxReturnable})`,
+        );
+      }
+
+      const unitPrice = Number(invoiceItem.unitPrice);
+      const gstRate = Number(invoiceItem.gstRate);
+      const lineSubtotal = unitPrice * item.quantity;
+      const taxAmount = Math.round(lineSubtotal * (gstRate / 100) * 100) / 100;
+      const lineTotal = lineSubtotal + taxAmount;
+
+      return {
+        productId: invoiceItem.productId,
+        productName: invoiceItem.productName,
+        quantity: item.quantity,
+        unitPrice,
+        gstRate,
+        taxAmount,
+        lineTotal,
+        lineSubtotal,
+      };
+    });
+
+    const subtotal = lineItems.reduce((sum, li) => sum + li.lineSubtotal, 0);
+    const taxTotal = lineItems.reduce((sum, li) => sum + li.taxAmount, 0);
+    const grandTotal = subtotal + taxTotal;
+
+    const returnCount = await this.prisma.salesReturn.count({
+      where: { businessId },
+    });
+    const returnNumber = `CN-${String(returnCount + 1).padStart(6, '0')}`;
+
+    return this.prisma.$transaction(async (tx) => {
+      const salesReturn = await tx.salesReturn.create({
+        data: {
+          businessId,
+          salesInvoiceId: id,
+          customerId: invoice.customerId,
+          returnNumber,
+          subtotal,
+          taxTotal,
+          grandTotal,
+          items: {
+            create: lineItems.map((li) => ({
+              productId: li.productId,
+              productName: li.productName,
+              quantity: li.quantity,
+              unitPrice: li.unitPrice,
+              gstRate: li.gstRate,
+              taxAmount: li.taxAmount,
+              lineTotal: li.lineTotal,
+            })),
+          },
+        },
+        include: { items: true },
+      });
+
+      for (const item of dto.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { currentStock: { increment: item.quantity } },
+        });
+      }
+
+      return salesReturn;
+    });
   }
 
   async addPayment(businessId: string, id: string, dto: CreatePaymentDto) {
@@ -72,6 +175,7 @@ export class SalesService {
           customer: true,
           items: true,
           payments: { orderBy: { paymentDate: 'desc' } },
+          returns: { include: { items: true }, orderBy: { returnDate: 'desc' } },
         },
       });
     });

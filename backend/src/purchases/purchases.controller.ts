@@ -14,6 +14,7 @@ import { CurrentBusinessId } from '../common/decorators/current-business-id.deco
 import { PurchasesService } from './purchases.service.js';
 import { CreatePurchaseBillDto } from './dto/create-purchase-bill.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
+import { CreatePurchaseReturnDto } from './dto/create-purchase-return.dto.js';
 
 @Roles('MANAGER', 'ACCOUNTANT')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -46,6 +47,15 @@ export class PurchasesController {
     @Body() dto: CreatePaymentDto,
   ) {
     return this.purchasesService.addPayment(businessId, id, dto);
+  }
+
+  @Post(':id/returns')
+  createReturn(
+    @CurrentBusinessId() businessId: string,
+    @Param('id') id: string,
+    @Body() dto: CreatePurchaseReturnDto,
+  ) {
+    return this.purchasesService.createReturn(businessId, id, dto);
   }
 
   @Delete(':id')

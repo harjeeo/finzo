@@ -68,9 +68,19 @@ export class CustomersService {
       },
     });
 
+    const returns = await this.prisma.salesReturn.findMany({
+      where: { businessId, customerId: id },
+      select: {
+        id: true,
+        returnNumber: true,
+        returnDate: true,
+        grandTotal: true,
+      },
+    });
+
     type Entry = {
       date: Date;
-      type: 'INVOICE' | 'PAYMENT';
+      type: 'INVOICE' | 'PAYMENT' | 'RETURN';
       reference: string;
       debit: number;
       credit: number;
@@ -90,6 +100,13 @@ export class CustomersService {
         reference: `${p.salesInvoice.invoiceNumber} · ${p.paymentMode}`,
         debit: 0,
         credit: Number(p.amount),
+      })),
+      ...returns.map((ret) => ({
+        date: ret.returnDate,
+        type: 'RETURN' as const,
+        reference: ret.returnNumber,
+        debit: 0,
+        credit: Number(ret.grandTotal),
       })),
     ].sort((a, b) => a.date.getTime() - b.date.getTime());
 

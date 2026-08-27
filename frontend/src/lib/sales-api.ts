@@ -20,6 +20,27 @@ export interface SalesPayment {
   paymentDate: string;
 }
 
+export interface SalesReturnItem {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: string;
+  unitPrice: string;
+  gstRate: string;
+  taxAmount: string;
+  lineTotal: string;
+}
+
+export interface SalesReturn {
+  id: string;
+  returnNumber: string;
+  returnDate: string;
+  subtotal: string;
+  taxTotal: string;
+  grandTotal: string;
+  items: SalesReturnItem[];
+}
+
 export interface SalesInvoice {
   id: string;
   invoiceNumber: string;
@@ -34,6 +55,11 @@ export interface SalesInvoice {
   customer: Customer;
   items?: SalesInvoiceItem[];
   payments?: SalesPayment[];
+  returns?: SalesReturn[];
+}
+
+export interface SalesReturnInput {
+  items: { productId: string; quantity: number }[];
 }
 
 export interface PaymentInput {
@@ -86,6 +112,18 @@ export function addSalesPayment(
   input: PaymentInput,
 ) {
   return apiFetch<SalesInvoice>(`/sales-invoices/${id}/payments`, {
+    method: "POST",
+    body: input,
+    token,
+  });
+}
+
+export function createSalesReturn(
+  token: string,
+  id: string,
+  input: SalesReturnInput,
+) {
+  return apiFetch<SalesReturn>(`/sales-invoices/${id}/returns`, {
     method: "POST",
     body: input,
     token,

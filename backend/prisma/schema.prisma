@@ -59,13 +59,15 @@ model Business {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  memberships   Membership[]
-  customers     Customer[]
-  suppliers     Supplier[]
-  products      Product[]
-  salesInvoices SalesInvoice[]
-  purchaseBills PurchaseBill[]
-  expenses      Expense[]
+  memberships     Membership[]
+  customers       Customer[]
+  suppliers       Supplier[]
+  products        Product[]
+  salesInvoices   SalesInvoice[]
+  purchaseBills   PurchaseBill[]
+  expenses        Expense[]
+  salesReturns    SalesReturn[]
+  purchaseReturns PurchaseReturn[]
 
   @@map("businesses")
 }
@@ -100,6 +102,7 @@ model Customer {
 
   business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
   salesInvoices SalesInvoice[]
+  salesReturns  SalesReturn[]
 
   @@index([businessId])
   @@map("customers")
@@ -117,8 +120,9 @@ model Supplier {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  purchaseBills PurchaseBill[]
+  business        Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  purchaseBills   PurchaseBill[]
+  purchaseReturns PurchaseReturn[]
 
   @@index([businessId])
   @@map("suppliers")
@@ -142,9 +146,11 @@ model Product {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  business          Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  salesInvoiceItems SalesInvoiceItem[]
-  purchaseBillItems PurchaseBillItem[]
+  business            Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  salesInvoiceItems   SalesInvoiceItem[]
+  purchaseBillItems   PurchaseBillItem[]
+  salesReturnItems    SalesReturnItem[]
+  purchaseReturnItems PurchaseReturnItem[]
 
   @@index([businessId])
   @@map("products")
@@ -170,6 +176,7 @@ model SalesInvoice {
   customer Customer           @relation(fields: [customerId], references: [id])
   items    SalesInvoiceItem[]
   payments SalesPayment[]
+  returns  SalesReturn[]
 
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
@@ -209,6 +216,47 @@ model SalesInvoiceItem {
   @@map("sales_invoice_items")
 }
 
+model SalesReturn {
+  id             String   @id @default(cuid())
+  businessId     String
+  salesInvoiceId String
+  customerId     String
+  returnNumber   String
+  returnDate     DateTime @default(now())
+  subtotal       Decimal  @default(0) @db.Decimal(14, 2)
+  taxTotal       Decimal  @default(0) @db.Decimal(14, 2)
+  grandTotal     Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime @default(now())
+
+  business     Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  salesInvoice SalesInvoice      @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
+  customer     Customer          @relation(fields: [customerId], references: [id])
+  items        SalesReturnItem[]
+
+  @@unique([businessId, returnNumber])
+  @@index([businessId])
+  @@index([salesInvoiceId])
+  @@map("sales_returns")
+}
+
+model SalesReturnItem {
+  id            String  @id @default(cuid())
+  salesReturnId String
+  productId     String
+  productName   String
+  quantity      Decimal @db.Decimal(14, 2)
+  unitPrice     Decimal @db.Decimal(14, 2)
+  gstRate       Decimal @db.Decimal(5, 2)
+  taxAmount     Decimal @db.Decimal(14, 2)
+  lineTotal     Decimal @db.Decimal(14, 2)
+
+  salesReturn SalesReturn @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
+  product     Product     @relation(fields: [productId], references: [id])
+
+  @@index([salesReturnId])
+  @@map("sales_return_items")
+}
+
 model PurchaseBill {
   id            String        @id @default(cuid())
   businessId    String
@@ -228,6 +276,7 @@ model PurchaseBill {
   supplier Supplier           @relation(fields: [supplierId], references: [id])
   items    PurchaseBillItem[]
   payments PurchasePayment[]
+  returns  PurchaseReturn[]
 
   @@unique([businessId, billNumber])
   @@index([businessId])
@@ -265,6 +314,47 @@ model PurchaseBillItem {
 
   @@index([purchaseBillId])
   @@map("purchase_bill_items")
+}
+
+model PurchaseReturn {
+  id             String   @id @default(cuid())
+  businessId     String
+  purchaseBillId String
+  supplierId     String
+  returnNumber   String
+  returnDate     DateTime @default(now())
+  subtotal       Decimal  @default(0) @db.Decimal(14, 2)
+  taxTotal       Decimal  @default(0) @db.Decimal(14, 2)
+  grandTotal     Decimal  @default(0) @db.Decimal(14, 2)
+  createdAt      DateTime @default(now())
+
+  business     Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  purchaseBill PurchaseBill         @relation(fields: [purchaseBillId], references: [id], onDelete: Cascade)
+  supplier     Supplier             @relation(fields: [supplierId], references: [id])
+  items        PurchaseReturnItem[]
+
+  @@unique([businessId, returnNumber])
+  @@index([businessId])
+  @@index([purchaseBillId])
+  @@map("purchase_returns")
+}
+
+model PurchaseReturnItem {
+  id               String  @id @default(cuid())
+  purchaseReturnId String
+  productId        String
+  productName      String
+  quantity         Decimal @db.Decimal(14, 2)
+  unitPrice        Decimal @db.Decimal(14, 2)
+  gstRate          Decimal @db.Decimal(5, 2)
+  taxAmount        Decimal @db.Decimal(14, 2)
+  lineTotal        Decimal @db.Decimal(14, 2)
+
+  purchaseReturn PurchaseReturn @relation(fields: [purchaseReturnId], references: [id], onDelete: Cascade)
+  product        Product        @relation(fields: [productId], references: [id])
+
+  @@index([purchaseReturnId])
+  @@map("purchase_return_items")
 }
 
 model Expense {

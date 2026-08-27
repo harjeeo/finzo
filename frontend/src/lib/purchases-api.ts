@@ -20,6 +20,27 @@ export interface PurchasePayment {
   paymentDate: string;
 }
 
+export interface PurchaseReturnItem {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: string;
+  unitPrice: string;
+  gstRate: string;
+  taxAmount: string;
+  lineTotal: string;
+}
+
+export interface PurchaseReturn {
+  id: string;
+  returnNumber: string;
+  returnDate: string;
+  subtotal: string;
+  taxTotal: string;
+  grandTotal: string;
+  items: PurchaseReturnItem[];
+}
+
 export interface PurchaseBill {
   id: string;
   billNumber: string;
@@ -33,6 +54,11 @@ export interface PurchaseBill {
   supplier: Supplier;
   items?: PurchaseBillItem[];
   payments?: PurchasePayment[];
+  returns?: PurchaseReturn[];
+}
+
+export interface PurchaseReturnInput {
+  items: { productId: string; quantity: number }[];
 }
 
 export interface PaymentInput {
@@ -83,6 +109,18 @@ export function addPurchasePayment(
   input: PaymentInput,
 ) {
   return apiFetch<PurchaseBill>(`/purchase-bills/${id}/payments`, {
+    method: "POST",
+    body: input,
+    token,
+  });
+}
+
+export function createPurchaseReturn(
+  token: string,
+  id: string,
+  input: PurchaseReturnInput,
+) {
+  return apiFetch<PurchaseReturn>(`/purchase-bills/${id}/returns`, {
     method: "POST",
     body: input,
     token,

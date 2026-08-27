@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreatePurchaseBillDto } from './dto/create-purchase-bill.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
+import { CreatePurchaseReturnDto } from './dto/create-purchase-return.dto.js';
 
 @Injectable()
 export class PurchasesService {
@@ -26,12 +27,130 @@ export class PurchasesService {
         supplier: true,
         items: true,
         payments: { orderBy: { paymentDate: 'desc' } },
+        returns: {
+          include: { items: true },
+          orderBy: { returnDate: 'desc' },
+        },
       },
     });
     if (!bill) {
       throw new NotFoundException('Purchase bill not found');
     }
     return bill;
+  }
+
+  async createReturn(
+    businessId: string,
+    id: string,
+    dto: CreatePurchaseReturnDto,
+  ) {
+    const bill = await this.findOne(businessId, id);
+
+    if (bill.status === 'CANCELLED') {
+      throw new BadRequestException('Cannot return items on a cancelled bill');
+    }
+
+    const billItemMap = new Map(bill.items.map((item) => [item.productId, item]));
+    const alreadyReturned = new Map<string, number>();
+    for (const ret of bill.returns) {
+      for (const item of ret.items) {
+        alreadyReturned.set(
+          item.productId,
+          (alreadyReturned.get(item.productId) ?? 0) + Number(item.quantity),
+        );
+      }
+    }
+
+    for (const item of dto.items) {
+      const billItem = billItemMap.get(item.productId);
+      if (!billItem) {
+        throw new BadRequestException(
+          `Product ${item.productId} was not part of this bill`,
+        );
+      }
+      const returnedSoFar = alreadyReturned.get(item.productId) ?? 0;
+      const maxReturnable = Number(billItem.quantity) - returnedSoFar;
+      if (item.quantity > maxReturnable) {
+        throw new BadRequestException(
+          `Cannot return ${item.quantity} of "${billItem.productName}" (max returnable: ${maxReturnable})`,
+        );
+      }
+    }
+
+    for (const item of dto.items) {
+      const product = await this.prisma.product.findUniqueOrThrow({
+        where: { id: item.productId },
+      });
+      if (Number(product.currentStock) < item.quantity) {
+        throw new BadRequestException(
+          `Insufficient stock for "${product.name}" to return (available: ${product.currentStock})`,
+        );
+      }
+    }
+
+    const lineItems = dto.items.map((item) => {
+      const billItem = billItemMap.get(item.productId)!;
+      const unitPrice = Number(billItem.unitPrice);
+      const gstRate = Number(billItem.gstRate);
+      const lineSubtotal = unitPrice * item.quantity;
+      const taxAmount = Math.round(lineSubtotal * (gstRate / 100) * 100) / 100;
+      const lineTotal = lineSubtotal + taxAmount;
+
+      return {
+        productId: billItem.productId,
+        productName: billItem.productName,
+        quantity: item.quantity,
+        unitPrice,
+        gstRate,
+        taxAmount,
+        lineTotal,
+        lineSubtotal,
+      };
+    });
+
+    const subtotal = lineItems.reduce((sum, li) => sum + li.lineSubtotal, 0);
+    const taxTotal = lineItems.reduce((sum, li) => sum + li.taxAmount, 0);
+    const grandTotal = subtotal + taxTotal;
+
+    const returnCount = await this.prisma.purchaseReturn.count({
+      where: { businessId },
+    });
+    const returnNumber = `DN-${String(returnCount + 1).padStart(6, '0')}`;
+
+    return this.prisma.$transaction(async (tx) => {
+      const purchaseReturn = await tx.purchaseReturn.create({
+        data: {
+          businessId,
+          purchaseBillId: id,
+          supplierId: bill.supplierId,
+          returnNumber,
+          subtotal,
+          taxTotal,
+          grandTotal,
+          items: {
+            create: lineItems.map((li) => ({
+              productId: li.productId,
+              productName: li.productName,
+              quantity: li.quantity,
+              unitPrice: li.unitPrice,
+              gstRate: li.gstRate,
+              taxAmount: li.taxAmount,
+              lineTotal: li.lineTotal,
+            })),
+          },
+        },
+        include: { items: true },
+      });
+
+      for (const item of dto.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { currentStock: { decrement: item.quantity } },
+        });
+      }
+
+      return purchaseReturn;
+    });
   }
 
   async addPayment(businessId: string, id: string, dto: CreatePaymentDto) {
@@ -70,6 +189,7 @@ export class PurchasesService {
           supplier: true,
           items: true,
           payments: { orderBy: { paymentDate: 'desc' } },
+          returns: { include: { items: true }, orderBy: { returnDate: 'desc' } },
         },
       });
     });
