@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -23,6 +24,16 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
+  /** Emails listed in SUPER_ADMIN_EMAILS (comma-separated) are granted platform admin access. */
+  private isDesignatedSuperAdmin(email: string): boolean {
+    const list = this.configService.get<string>('SUPER_ADMIN_EMAILS') ?? '';
+    return list
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean)
+      .includes(email.toLowerCase());
+  }
+
   async register(dto: RegisterDto) {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
@@ -32,6 +43,7 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
+    const isSuperAdmin = this.isDesignatedSuperAdmin(dto.email);
 
     const { user, business } = await this.prisma.$transaction(async (tx) => {
       const createdUser = await tx.user.create({
@@ -39,6 +51,7 @@ export class AuthService {
           name: dto.name,
           email: dto.email,
           passwordHash,
+          isSuperAdmin,
         },
       });
 
@@ -82,11 +95,12 @@ export class AuthService {
       email: user.email,
       businessId: business.id,
       role: 'OWNER',
+      isSuperAdmin: user.isSuperAdmin,
     });
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { email: dto.email },
       include: { memberships: true },
     });
@@ -100,13 +114,32 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    if (!user.isSuperAdmin && this.isDesignatedSuperAdmin(user.email)) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { isSuperAdmin: true },
+        include: { memberships: true },
+      });
+    }
+
     const primaryMembership = user.memberships[0];
+    if (primaryMembership) {
+      const business = await this.prisma.business.findUnique({
+        where: { id: primaryMembership.businessId },
+      });
+      if (business?.status === 'SUSPENDED') {
+        throw new ForbiddenException(
+          'This business account has been suspended. Please contact support.',
+        );
+      }
+    }
 
     return this.buildTokens({
       sub: user.id,
       email: user.email,
       businessId: primaryMembership?.businessId ?? null,
       role: primaryMembership?.role ?? null,
+      isSuperAdmin: user.isSuperAdmin,
     });
   }
 

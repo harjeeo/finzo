@@ -34,6 +34,11 @@ enum AccountType {
   EXPENSE
 }
 
+enum BusinessStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 enum JournalSourceType {
   MANUAL
   SALES_INVOICE
@@ -75,6 +80,7 @@ model Business {
   financialYearStart DateTime?
   invoicePrefix      String    @default("INV")
   currency           String    @default("INR")
+  status             BusinessStatus @default(ACTIVE)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 

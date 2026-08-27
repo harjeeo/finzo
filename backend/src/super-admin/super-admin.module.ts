@@ -1,0 +1,11 @@
+import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module.js';
+import { SuperAdminController } from './super-admin.controller.js';
+import { SuperAdminService } from './super-admin.service.js';
+
+@Module({
+  imports: [AuthModule],
+  controllers: [SuperAdminController],
+  providers: [SuperAdminService],
+})
+export class SuperAdminModule {}

@@ -16,6 +16,7 @@ import { BusinessModule } from './business/business.module.js';
 import { StaffModule } from './staff/staff.module.js';
 import { BranchesModule } from './branches/branches.module.js';
 import { AccountingModule } from './accounting/accounting.module.js';
+import { SuperAdminModule } from './super-admin/super-admin.module.js';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AccountingModule } from './accounting/accounting.module.js';
     StaffModule,
     BranchesModule,
     AccountingModule,
+    SuperAdminModule,
   ],
   controllers: [AppController],
   providers: [AppService],

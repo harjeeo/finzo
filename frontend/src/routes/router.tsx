@@ -24,9 +24,13 @@ import { SalesInvoicePrint } from "../pages/SalesInvoicePrint";
 import { PurchaseBillPrint } from "../pages/PurchaseBillPrint";
 import { CustomerLedgerPage } from "../pages/CustomerLedgerPage";
 import { SupplierLedgerPage } from "../pages/SupplierLedgerPage";
+import { AdminLayout } from "../layouts/AdminLayout";
+import { AdminDashboard } from "../pages/admin/AdminDashboard";
+import { AdminBusinesses } from "../pages/admin/AdminBusinesses";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { PublicOnlyRoute } from "./PublicOnlyRoute";
 import { RequireRole } from "./RequireRole";
+import { RequireSuperAdmin } from "./RequireSuperAdmin";
 
 export const router = createBrowserRouter([
   {
@@ -77,6 +81,19 @@ export const router = createBrowserRouter([
               { path: "staff", element: <Staff /> },
               { path: "settings", element: <Settings /> },
               { path: "branches", element: <Branches /> },
+            ],
+          },
+        ],
+      },
+      {
+        element: <RequireSuperAdmin />,
+        children: [
+          {
+            path: "/admin",
+            element: <AdminLayout />,
+            children: [
+              { index: true, element: <AdminDashboard /> },
+              { path: "businesses", element: <AdminBusinesses /> },
             ],
           },
         ],

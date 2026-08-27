@@ -18,6 +18,7 @@ interface AuthUser {
   email: string;
   businessId: string | null;
   role: string | null;
+  isSuperAdmin: boolean;
 }
 
 interface AuthContextValue {
