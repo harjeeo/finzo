@@ -146,7 +146,7 @@ export function SalesInvoiceDetail() {
         </div>
       </div>
 
-      <div className="mt-6 max-w-3xl overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
             <tr>
@@ -204,7 +204,7 @@ export function SalesInvoiceDetail() {
         </div>
       </div>
 
-      <div className="mt-6 max-w-3xl overflow-hidden rounded-xl border border-gray-200 bg-white">
+      <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
           <h2 className="text-sm font-medium text-gray-700">Payment History</h2>
           {canRecordPayment && (
@@ -251,7 +251,7 @@ export function SalesInvoiceDetail() {
       </div>
 
       {invoice.returns && invoice.returns.length > 0 && (
-        <div className="mt-6 max-w-3xl overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
           <div className="border-b border-gray-200 px-4 py-3">
             <h2 className="text-sm font-medium text-gray-700">
               Credit Notes (Returns)
