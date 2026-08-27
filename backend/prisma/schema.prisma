@@ -1,0 +1,212 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum BusinessRole {
+  OWNER
+  MANAGER
+  ACCOUNTANT
+  CASHIER
+  STAFF
+}
+
+enum InvoiceStatus {
+  DRAFT
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+// A platform-level user. Can belong to multiple businesses via Membership.
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  isSuperAdmin Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships Membership[]
+
+  @@map("users")
+}
+
+// A tenant. All business data is scoped to a businessId.
+model Business {
+  id           String   @id @default(cuid())
+  name         String
+  gstin        String?
+  pan          String?
+  address      String?
+  city         String?
+  state        String?
+  pincode      String?
+  logoUrl      String?
+  financialYearStart DateTime?
+  invoicePrefix String  @default("INV")
+  currency     String   @default("INR")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  memberships Membership[]
+  customers   Customer[]
+  suppliers   Supplier[]
+  products    Product[]
+  salesInvoices    SalesInvoice[]
+  purchaseBills    PurchaseBill[]
+  expenses    Expense[]
+
+  @@map("businesses")
+}
+
+// Links a User to a Business with a role — supports multi-business users.
+model Membership {
+  id         String       @id @default(cuid())
+  userId     String
+  businessId String
+  role       BusinessRole
+  createdAt  DateTime     @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, businessId])
+  @@map("memberships")
+}
+
+model Customer {
+  id           String   @id @default(cuid())
+  businessId   String
+  name         String
+  phone        String?
+  email        String?
+  gstin        String?
+  address      String?
+  openingBalance Decimal @default(0) @db.Decimal(14, 2)
+  creditLimit  Decimal? @db.Decimal(14, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  salesInvoices  SalesInvoice[]
+
+  @@index([businessId])
+  @@map("customers")
+}
+
+model Supplier {
+  id           String   @id @default(cuid())
+  businessId   String
+  name         String
+  phone        String?
+  email        String?
+  gstin        String?
+  address      String?
+  openingBalance Decimal @default(0) @db.Decimal(14, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  purchaseBills PurchaseBill[]
+
+  @@index([businessId])
+  @@map("suppliers")
+}
+
+model Product {
+  id           String   @id @default(cuid())
+  businessId   String
+  name         String
+  sku          String?
+  barcode      String?
+  category     String?
+  unit         String   @default("PCS")
+  hsnCode      String?
+  purchasePrice Decimal @default(0) @db.Decimal(14, 2)
+  sellingPrice  Decimal @default(0) @db.Decimal(14, 2)
+  gstRate       Decimal @default(0) @db.Decimal(5, 2)
+  openingStock  Decimal @default(0) @db.Decimal(14, 2)
+  currentStock  Decimal @default(0) @db.Decimal(14, 2)
+  minStockLevel Decimal @default(0) @db.Decimal(14, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  business  Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("products")
+}
+
+model SalesInvoice {
+  id            String        @id @default(cuid())
+  businessId    String
+  customerId    String
+  invoiceNumber String
+  invoiceDate   DateTime      @default(now())
+  status        InvoiceStatus @default(DRAFT)
+  subtotal      Decimal       @default(0) @db.Decimal(14, 2)
+  taxTotal      Decimal       @default(0) @db.Decimal(14, 2)
+  discountTotal Decimal       @default(0) @db.Decimal(14, 2)
+  grandTotal    Decimal       @default(0) @db.Decimal(14, 2)
+  amountPaid    Decimal       @default(0) @db.Decimal(14, 2)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@unique([businessId, invoiceNumber])
+  @@index([businessId])
+  @@map("sales_invoices")
+}
+
+model PurchaseBill {
+  id            String        @id @default(cuid())
+  businessId    String
+  supplierId    String
+  billNumber    String
+  billDate      DateTime      @default(now())
+  status        InvoiceStatus @default(DRAFT)
+  subtotal      Decimal       @default(0) @db.Decimal(14, 2)
+  taxTotal      Decimal       @default(0) @db.Decimal(14, 2)
+  discountTotal Decimal       @default(0) @db.Decimal(14, 2)
+  grandTotal    Decimal       @default(0) @db.Decimal(14, 2)
+  amountPaid    Decimal       @default(0) @db.Decimal(14, 2)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@unique([businessId, billNumber])
+  @@index([businessId])
+  @@map("purchase_bills")
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  businessId  String
+  category    String
+  amount      Decimal  @db.Decimal(14, 2)
+  paymentMode String   @default("CASH")
+  reference   String?
+  expenseDate DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("expenses")
+}
