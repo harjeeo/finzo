@@ -3,6 +3,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentBusinessId } from '../common/decorators/current-business-id.decorator.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { BusinessService } from './business.service.js';
 import { UpdateBusinessDto } from './dto/update-business.dto.js';
 
@@ -21,7 +23,8 @@ export class BusinessController {
   update(
     @CurrentBusinessId() businessId: string,
     @Body() dto: UpdateBusinessDto,
+    @CurrentUser() actor: JwtPayload,
   ) {
-    return this.businessService.update(businessId, dto);
+    return this.businessService.update(businessId, dto, actor);
   }
 }

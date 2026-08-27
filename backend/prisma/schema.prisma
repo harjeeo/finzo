@@ -39,6 +39,24 @@ enum BusinessStatus {
   SUSPENDED
 }
 
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum TransportMode {
+  ROAD
+  RAIL
+  AIR
+  SHIP
+}
+
+enum EwayBillStatus {
+  GENERATED
+  CANCELLED
+}
+
 enum JournalSourceType {
   MANUAL
   SALES_INVOICE
@@ -96,6 +114,8 @@ model Business {
   branches        Branch[]
   accounts        Account[]
   journalEntries  JournalEntry[]
+  auditLogs       AuditLog[]
+  ewayBills       EwayBill[]
 
   @@map("businesses")
 }
@@ -279,6 +299,7 @@ model SalesInvoice {
   items    SalesInvoiceItem[]
   payments SalesPayment[]
   returns  SalesReturn[]
+  ewayBill EwayBill?
 
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
@@ -481,4 +502,45 @@ model Expense {
   @@index([businessId])
   @@index([branchId])
   @@map("expenses")
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  businessId String
+  userId     String?
+  userEmail  String?
+  entityType String
+  entityId   String
+  action     AuditAction
+  summary    String?
+  changes    Json?
+  createdAt  DateTime    @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, createdAt])
+  @@index([businessId, entityType, entityId])
+  @@map("audit_logs")
+}
+
+model EwayBill {
+  id               String         @id @default(cuid())
+  businessId       String
+  salesInvoiceId   String         @unique
+  ewbNumber        String?
+  transporterName  String?
+  transporterId    String?
+  vehicleNumber    String?
+  transportMode    TransportMode  @default(ROAD)
+  distanceKm       Int
+  validUntil       DateTime
+  status           EwayBillStatus @default(GENERATED)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  business     Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("eway_bills")
 }

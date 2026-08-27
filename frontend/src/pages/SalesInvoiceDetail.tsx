@@ -5,6 +5,7 @@ import {
   Delete02Icon,
   PrinterIcon,
   ReturnRequestIcon,
+  TruckDeliveryIcon,
 } from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
 import { canDeleteSales, hasRole } from "../lib/permissions";
@@ -15,8 +16,17 @@ import {
   getSalesInvoice,
   type SalesInvoice,
 } from "../lib/sales-api";
+import {
+  cancelEwayBill,
+  generateEwayBill,
+  getEwayBill,
+  EWAY_BILL_THRESHOLD,
+  type EwayBill,
+  type EwayBillInput,
+} from "../lib/eway-bill-api";
 import { RecordPaymentModal } from "../components/RecordPaymentModal";
 import { CreateReturnModal } from "../components/CreateReturnModal";
+import { EwayBillModal } from "../components/EwayBillModal";
 
 export function SalesInvoiceDetail() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +39,8 @@ export function SalesInvoiceDetail() {
   const [error, setError] = useState<string | null>(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showReturnModal, setShowReturnModal] = useState(false);
+  const [ewayBill, setEwayBill] = useState<EwayBill | null>(null);
+  const [showEwayBillModal, setShowEwayBillModal] = useState(false);
 
   const loadInvoice = () => {
     if (!accessToken || !id) return;
@@ -39,8 +51,15 @@ export function SalesInvoiceDetail() {
       );
   };
 
+  const loadEwayBill = () => {
+    if (!accessToken || !id) return;
+    return getEwayBill(accessToken, id).then(setEwayBill);
+  };
+
   useEffect(() => {
-    loadInvoice()?.finally(() => setIsLoading(false));
+    Promise.all([loadInvoice(), loadEwayBill()]).finally(() =>
+      setIsLoading(false),
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, id]);
 
@@ -69,6 +88,20 @@ export function SalesInvoiceDetail() {
     await createSalesReturn(accessToken, id, { items });
     setShowReturnModal(false);
     await loadInvoice();
+  };
+
+  const handleGenerateEwayBill = async (input: EwayBillInput) => {
+    if (!accessToken || !id) return;
+    const bill = await generateEwayBill(accessToken, id, input);
+    setEwayBill(bill);
+    setShowEwayBillModal(false);
+  };
+
+  const handleCancelEwayBill = async () => {
+    if (!accessToken || !id) return;
+    if (!confirm("Cancel this E-Way Bill?")) return;
+    const bill = await cancelEwayBill(accessToken, id);
+    setEwayBill(bill);
   };
 
   if (isLoading) return <p className="text-sm text-gray-500">Loading...</p>;
@@ -204,6 +237,92 @@ export function SalesInvoiceDetail() {
         </div>
       </div>
 
+      {invoice.status !== "CANCELLED" && (
+        <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
+          <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <TruckDeliveryIcon size={18} className="text-gray-400" />
+              <h2 className="text-sm font-medium text-gray-700">E-Way Bill</h2>
+              {Number(invoice.grandTotal) >= EWAY_BILL_THRESHOLD &&
+                !ewayBill && (
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                    Required (₹{EWAY_BILL_THRESHOLD.toLocaleString("en-IN")}+)
+                  </span>
+                )}
+            </div>
+            {(!ewayBill || ewayBill.status === "CANCELLED") && (
+              <button
+                onClick={() => setShowEwayBillModal(true)}
+                className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
+              >
+                Generate E-Way Bill
+              </button>
+            )}
+          </div>
+
+          {!ewayBill ? (
+            <p className="p-4 text-sm text-gray-500">
+              No E-Way Bill generated for this invoice yet.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 p-4 text-sm sm:grid-cols-4">
+              <div>
+                <p className="text-gray-500">EWB Number</p>
+                <p className="font-medium text-gray-900">
+                  {ewayBill.ewbNumber || "Not entered"}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500">Vehicle</p>
+                <p className="font-medium text-gray-900">
+                  {ewayBill.vehicleNumber || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500">Distance</p>
+                <p className="font-medium text-gray-900">
+                  {ewayBill.distanceKm} km
+                </p>
+              </div>
+              <div>
+                <p className="text-gray-500">Valid Until</p>
+                <p className="font-medium text-gray-900">
+                  {new Date(ewayBill.validUntil).toLocaleDateString("en-IN")}
+                </p>
+              </div>
+              <div className="col-span-2 sm:col-span-4 flex items-center justify-between border-t border-gray-100 pt-3">
+                <span
+                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                    ewayBill.status === "GENERATED"
+                      ? "bg-green-50 text-green-700"
+                      : "bg-red-50 text-red-700"
+                  }`}
+                >
+                  {ewayBill.status}
+                </span>
+                <div className="flex gap-2">
+                  <Link
+                    to={`/sales/${id}/eway-bill/print`}
+                    className="flex items-center gap-1 text-xs font-medium text-purple-600 hover:underline"
+                  >
+                    <PrinterIcon size={14} />
+                    Print
+                  </Link>
+                  {ewayBill.status === "GENERATED" && (
+                    <button
+                      onClick={handleCancelEwayBill}
+                      className="text-xs font-medium text-red-600 hover:underline"
+                    >
+                      Cancel E-Way Bill
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="mt-6 overflow-hidden rounded-xl border border-gray-200 bg-white">
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
           <h2 className="text-sm font-medium text-gray-700">Payment History</h2>
@@ -302,6 +421,13 @@ export function SalesInvoiceDetail() {
           items={returnableItems}
           onClose={() => setShowReturnModal(false)}
           onSubmit={handleCreateReturn}
+        />
+      )}
+
+      {showEwayBillModal && (
+        <EwayBillModal
+          onClose={() => setShowEwayBillModal(false)}
+          onSubmit={handleGenerateEwayBill}
         />
       )}
     </div>

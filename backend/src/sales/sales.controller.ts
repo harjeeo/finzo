@@ -12,6 +12,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentBusinessId } from '../common/decorators/current-business-id.decorator.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { SalesService } from './sales.service.js';
 import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
@@ -39,8 +41,9 @@ export class SalesController {
   create(
     @CurrentBusinessId() businessId: string,
     @Body() dto: CreateSalesInvoiceDto,
+    @CurrentUser() actor: JwtPayload,
   ) {
-    return this.salesService.create(businessId, dto);
+    return this.salesService.create(businessId, dto, actor);
   }
 
   @Post(':id/payments')
@@ -64,7 +67,11 @@ export class SalesController {
 
   @Roles('MANAGER')
   @Delete(':id')
-  remove(@CurrentBusinessId() businessId: string, @Param('id') id: string) {
-    return this.salesService.remove(businessId, id);
+  remove(
+    @CurrentBusinessId() businessId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: JwtPayload,
+  ) {
+    return this.salesService.remove(businessId, id, actor);
   }
 }

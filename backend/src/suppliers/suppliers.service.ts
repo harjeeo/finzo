@@ -1,11 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { AuditService } from '../audit/audit.service.js';
+import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { CreateSupplierDto } from './dto/create-supplier.dto.js';
 import { UpdateSupplierDto } from './dto/update-supplier.dto.js';
 
 @Injectable()
 export class SuppliersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   findAll(businessId: string) {
     return this.prisma.supplier.findMany({
@@ -24,23 +29,60 @@ export class SuppliersService {
     return supplier;
   }
 
-  create(businessId: string, dto: CreateSupplierDto) {
-    return this.prisma.supplier.create({
+  async create(businessId: string, dto: CreateSupplierDto, actor: JwtPayload) {
+    const supplier = await this.prisma.supplier.create({
       data: { ...dto, businessId },
     });
+    await this.auditService.log({
+      businessId,
+      userId: actor.sub,
+      userEmail: actor.email,
+      entityType: 'Supplier',
+      entityId: supplier.id,
+      action: 'CREATE',
+      summary: `Created supplier "${supplier.name}"`,
+      changes: { after: supplier },
+    });
+    return supplier;
   }
 
-  async update(businessId: string, id: string, dto: UpdateSupplierDto) {
-    await this.findOne(businessId, id);
-    return this.prisma.supplier.update({
+  async update(
+    businessId: string,
+    id: string,
+    dto: UpdateSupplierDto,
+    actor: JwtPayload,
+  ) {
+    const before = await this.findOne(businessId, id);
+    const after = await this.prisma.supplier.update({
       where: { id },
       data: dto,
     });
+    await this.auditService.log({
+      businessId,
+      userId: actor.sub,
+      userEmail: actor.email,
+      entityType: 'Supplier',
+      entityId: id,
+      action: 'UPDATE',
+      summary: `Updated supplier "${after.name}"`,
+      changes: { before, after },
+    });
+    return after;
   }
 
-  async remove(businessId: string, id: string) {
-    await this.findOne(businessId, id);
+  async remove(businessId: string, id: string, actor: JwtPayload) {
+    const supplier = await this.findOne(businessId, id);
     await this.prisma.supplier.delete({ where: { id } });
+    await this.auditService.log({
+      businessId,
+      userId: actor.sub,
+      userEmail: actor.email,
+      entityType: 'Supplier',
+      entityId: id,
+      action: 'DELETE',
+      summary: `Deleted supplier "${supplier.name}"`,
+      changes: { before: supplier },
+    });
     return { success: true };
   }
 

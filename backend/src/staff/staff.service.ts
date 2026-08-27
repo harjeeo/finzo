@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { AuditService } from '../audit/audit.service.js';
+import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { CreateStaffDto } from './dto/create-staff.dto.js';
 import { UpdateStaffDto } from './dto/update-staff.dto.js';
 
@@ -13,7 +15,10 @@ const SALT_ROUNDS = 12;
 
 @Injectable()
 export class StaffService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   async findAll(businessId: string) {
     const memberships = await this.prisma.membership.findMany({
@@ -26,7 +31,7 @@ export class StaffService {
     return memberships;
   }
 
-  async create(businessId: string, dto: CreateStaffDto) {
+  async create(businessId: string, dto: CreateStaffDto, actor: JwtPayload) {
     let user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -54,12 +59,29 @@ export class StaffService {
       },
     });
 
+    await this.auditService.log({
+      businessId,
+      userId: actor.sub,
+      userEmail: actor.email,
+      entityType: 'Staff',
+      entityId: membership.id,
+      action: 'CREATE',
+      summary: `Added staff member "${membership.user.email}" as ${membership.role}`,
+      changes: { after: membership },
+    });
+
     return membership;
   }
 
-  async update(businessId: string, membershipId: string, dto: UpdateStaffDto) {
+  async update(
+    businessId: string,
+    membershipId: string,
+    dto: UpdateStaffDto,
+    actor: JwtPayload,
+  ) {
     const membership = await this.prisma.membership.findFirst({
       where: { id: membershipId, businessId },
+      include: { user: { select: { id: true, name: true, email: true } } },
     });
     if (!membership) {
       throw new NotFoundException('Staff member not found');
@@ -68,18 +90,32 @@ export class StaffService {
       throw new BadRequestException("The business owner's role can't be changed");
     }
 
-    return this.prisma.membership.update({
+    const updated = await this.prisma.membership.update({
       where: { id: membershipId },
       data: { role: dto.role },
       include: {
         user: { select: { id: true, name: true, email: true } },
       },
     });
+
+    await this.auditService.log({
+      businessId,
+      userId: actor.sub,
+      userEmail: actor.email,
+      entityType: 'Staff',
+      entityId: membershipId,
+      action: 'UPDATE',
+      summary: `Changed "${membership.user.email}" role from ${membership.role} to ${updated.role}`,
+      changes: { before: membership, after: updated },
+    });
+
+    return updated;
   }
 
-  async remove(businessId: string, membershipId: string) {
+  async remove(businessId: string, membershipId: string, actor: JwtPayload) {
     const membership = await this.prisma.membership.findFirst({
       where: { id: membershipId, businessId },
+      include: { user: { select: { id: true, name: true, email: true } } },
     });
     if (!membership) {
       throw new NotFoundException('Staff member not found');
@@ -89,6 +125,18 @@ export class StaffService {
     }
 
     await this.prisma.membership.delete({ where: { id: membershipId } });
+
+    await this.auditService.log({
+      businessId,
+      userId: actor.sub,
+      userEmail: actor.email,
+      entityType: 'Staff',
+      entityId: membershipId,
+      action: 'DELETE',
+      summary: `Removed staff member "${membership.user.email}"`,
+      changes: { before: membership },
+    });
+
     return { success: true };
   }
 }

@@ -17,6 +17,8 @@ import { StaffModule } from './staff/staff.module.js';
 import { BranchesModule } from './branches/branches.module.js';
 import { AccountingModule } from './accounting/accounting.module.js';
 import { SuperAdminModule } from './super-admin/super-admin.module.js';
+import { AuditModule } from './audit/audit.module.js';
+import { EwayBillModule } from './eway-bill/eway-bill.module.js';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { SuperAdminModule } from './super-admin/super-admin.module.js';
     BranchesModule,
     AccountingModule,
     SuperAdminModule,
+    AuditModule,
+    EwayBillModule,
   ],
   controllers: [AppController],
   providers: [AppService],

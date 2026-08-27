@@ -8,6 +8,8 @@ import { BranchesService } from '../branches/branches.service.js';
 import { AccountsService } from '../accounting/accounts.service.js';
 import { JournalService, type PostLine } from '../accounting/journal.service.js';
 import { SYSTEM_ACCOUNT_CODES, paymentModeAccountCode } from '../accounting/default-accounts.js';
+import { AuditService } from '../audit/audit.service.js';
+import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
 import { CreateSalesReturnDto } from './dto/create-sales-return.dto.js';
@@ -19,6 +21,7 @@ export class SalesService {
     private readonly branchesService: BranchesService,
     private readonly accountsService: AccountsService,
     private readonly journalService: JournalService,
+    private readonly auditService: AuditService,
   ) {}
 
   findAll(businessId: string, branchId?: string) {
@@ -227,7 +230,7 @@ export class SalesService {
     });
   }
 
-  async create(businessId: string, dto: CreateSalesInvoiceDto) {
+  async create(businessId: string, dto: CreateSalesInvoiceDto, actor: JwtPayload) {
     const customer = await this.prisma.customer.findFirst({
       where: { id: dto.customerId, businessId },
     });
@@ -373,11 +376,25 @@ export class SalesService {
         lines: journalLines,
       });
 
+      await this.auditService.log(
+        {
+          businessId,
+          userId: actor.sub,
+          userEmail: actor.email,
+          entityType: 'SalesInvoice',
+          entityId: invoice.id,
+          action: 'CREATE',
+          summary: `Created sales invoice ${invoiceNumber} for ₹${grandTotal.toFixed(2)}`,
+          changes: { after: invoice },
+        },
+        tx,
+      );
+
       return invoice;
     });
   }
 
-  async remove(businessId: string, id: string) {
+  async remove(businessId: string, id: string, actor: JwtPayload) {
     const invoice = await this.findOne(businessId, id);
 
     return this.prisma.$transaction(async (tx) => {
@@ -398,6 +415,21 @@ export class SalesService {
       });
 
       await tx.salesInvoice.delete({ where: { id } });
+
+      await this.auditService.log(
+        {
+          businessId,
+          userId: actor.sub,
+          userEmail: actor.email,
+          entityType: 'SalesInvoice',
+          entityId: id,
+          action: 'DELETE',
+          summary: `Deleted sales invoice ${invoice.invoiceNumber}`,
+          changes: { before: invoice },
+        },
+        tx,
+      );
+
       return { success: true };
     });
   }

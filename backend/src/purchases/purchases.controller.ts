@@ -12,6 +12,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { RolesGuard } from '../common/guards/roles.guard.js';
 import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentBusinessId } from '../common/decorators/current-business-id.decorator.js';
+import { CurrentUser } from '../common/decorators/current-user.decorator.js';
+import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { PurchasesService } from './purchases.service.js';
 import { CreatePurchaseBillDto } from './dto/create-purchase-bill.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
@@ -40,8 +42,9 @@ export class PurchasesController {
   create(
     @CurrentBusinessId() businessId: string,
     @Body() dto: CreatePurchaseBillDto,
+    @CurrentUser() actor: JwtPayload,
   ) {
-    return this.purchasesService.create(businessId, dto);
+    return this.purchasesService.create(businessId, dto, actor);
   }
 
   @Post(':id/payments')
@@ -63,7 +66,11 @@ export class PurchasesController {
   }
 
   @Delete(':id')
-  remove(@CurrentBusinessId() businessId: string, @Param('id') id: string) {
-    return this.purchasesService.remove(businessId, id);
+  remove(
+    @CurrentBusinessId() businessId: string,
+    @Param('id') id: string,
+    @CurrentUser() actor: JwtPayload,
+  ) {
+    return this.purchasesService.remove(businessId, id, actor);
   }
 }

@@ -8,6 +8,8 @@ import { BranchesService } from '../branches/branches.service.js';
 import { AccountsService } from '../accounting/accounts.service.js';
 import { JournalService, type PostLine } from '../accounting/journal.service.js';
 import { SYSTEM_ACCOUNT_CODES, paymentModeAccountCode } from '../accounting/default-accounts.js';
+import { AuditService } from '../audit/audit.service.js';
+import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { CreatePurchaseBillDto } from './dto/create-purchase-bill.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
 import { CreatePurchaseReturnDto } from './dto/create-purchase-return.dto.js';
@@ -19,6 +21,7 @@ export class PurchasesService {
     private readonly branchesService: BranchesService,
     private readonly accountsService: AccountsService,
     private readonly journalService: JournalService,
+    private readonly auditService: AuditService,
   ) {}
 
   findAll(businessId: string, branchId?: string) {
@@ -241,7 +244,7 @@ export class PurchasesService {
     });
   }
 
-  async create(businessId: string, dto: CreatePurchaseBillDto) {
+  async create(businessId: string, dto: CreatePurchaseBillDto, actor: JwtPayload) {
     const supplier = await this.prisma.supplier.findFirst({
       where: { id: dto.supplierId, businessId },
     });
@@ -360,11 +363,25 @@ export class PurchasesService {
         lines,
       });
 
+      await this.auditService.log(
+        {
+          businessId,
+          userId: actor.sub,
+          userEmail: actor.email,
+          entityType: 'PurchaseBill',
+          entityId: bill.id,
+          action: 'CREATE',
+          summary: `Created purchase bill ${billNumber} for ₹${grandTotal.toFixed(2)}`,
+          changes: { after: bill },
+        },
+        tx,
+      );
+
       return bill;
     });
   }
 
-  async remove(businessId: string, id: string) {
+  async remove(businessId: string, id: string, actor: JwtPayload) {
     const bill = await this.findOne(businessId, id);
 
     return this.prisma.$transaction(async (tx) => {
@@ -385,6 +402,21 @@ export class PurchasesService {
       });
 
       await tx.purchaseBill.delete({ where: { id } });
+
+      await this.auditService.log(
+        {
+          businessId,
+          userId: actor.sub,
+          userEmail: actor.email,
+          entityType: 'PurchaseBill',
+          entityId: id,
+          action: 'DELETE',
+          summary: `Deleted purchase bill ${bill.billNumber}`,
+          changes: { before: bill },
+        },
+        tx,
+      );
+
       return { success: true };
     });
   }

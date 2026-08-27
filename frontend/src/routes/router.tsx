@@ -22,6 +22,8 @@ import { Settings } from "../pages/Settings";
 import { Billing } from "../pages/Billing";
 import { SalesInvoicePrint } from "../pages/SalesInvoicePrint";
 import { PurchaseBillPrint } from "../pages/PurchaseBillPrint";
+import { EwayBillPrint } from "../pages/EwayBillPrint";
+import { AuditLog } from "../pages/AuditLog";
 import { CustomerLedgerPage } from "../pages/CustomerLedgerPage";
 import { SupplierLedgerPage } from "../pages/SupplierLedgerPage";
 import { AdminLayout } from "../layouts/AdminLayout";
@@ -49,6 +51,7 @@ export const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       { path: "sales/:id/print", element: <SalesInvoicePrint /> },
+      { path: "sales/:id/eway-bill/print", element: <EwayBillPrint /> },
       { path: "purchase/:id/print", element: <PurchaseBillPrint /> },
       {
         path: "/",
@@ -81,6 +84,7 @@ export const router = createBrowserRouter([
               { path: "staff", element: <Staff /> },
               { path: "settings", element: <Settings /> },
               { path: "branches", element: <Branches /> },
+              { path: "audit-log", element: <AuditLog /> },
             ],
           },
         ],

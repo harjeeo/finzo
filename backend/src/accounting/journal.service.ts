@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { Prisma } from '../generated/prisma/client.js';
+import { AuditService } from '../audit/audit.service.js';
+import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { CreateJournalEntryDto } from './dto/create-journal-entry.dto.js';
 
 export interface PostLine {
@@ -31,7 +33,10 @@ const ROUNDING_TOLERANCE = 0.01;
 
 @Injectable()
 export class JournalService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /** Posts a balanced journal entry. Pass a transaction client to compose with a parent transaction. */
   async postEntry(
@@ -121,7 +126,7 @@ export class JournalService {
     return entry;
   }
 
-  async createManual(businessId: string, dto: CreateJournalEntryDto) {
+  async createManual(businessId: string, dto: CreateJournalEntryDto, actor: JwtPayload) {
     const accountIds = dto.lines.map((l) => l.accountId);
     const accounts = await this.prisma.account.findMany({
       where: { id: { in: accountIds }, businessId },
@@ -130,16 +135,29 @@ export class JournalService {
       throw new BadRequestException('One or more accounts were not found');
     }
 
-    return this.postEntry(this.prisma, {
+    const entry = await this.postEntry(this.prisma, {
       businessId,
       entryDate: dto.entryDate ? new Date(dto.entryDate) : undefined,
       narration: dto.narration,
       sourceType: 'MANUAL',
       lines: dto.lines,
     });
+
+    await this.auditService.log({
+      businessId,
+      userId: actor.sub,
+      userEmail: actor.email,
+      entityType: 'JournalEntry',
+      entityId: entry.id,
+      action: 'CREATE',
+      summary: `Posted manual journal entry ${entry.entryNumber}`,
+      changes: { after: entry },
+    });
+
+    return entry;
   }
 
-  async removeManual(businessId: string, id: string) {
+  async removeManual(businessId: string, id: string, actor: JwtPayload) {
     const entry = await this.findOne(businessId, id);
     if (entry.sourceType !== 'MANUAL') {
       throw new BadRequestException(
@@ -147,6 +165,16 @@ export class JournalService {
       );
     }
     await this.prisma.journalEntry.delete({ where: { id } });
+    await this.auditService.log({
+      businessId,
+      userId: actor.sub,
+      userEmail: actor.email,
+      entityType: 'JournalEntry',
+      entityId: id,
+      action: 'DELETE',
+      summary: `Deleted manual journal entry ${entry.entryNumber}`,
+      changes: { before: entry },
+    });
     return { success: true };
   }
 

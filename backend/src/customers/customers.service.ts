@@ -1,11 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { AuditService } from '../audit/audit.service.js';
+import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { CreateCustomerDto } from './dto/create-customer.dto.js';
 import { UpdateCustomerDto } from './dto/update-customer.dto.js';
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+  ) {}
 
   findAll(businessId: string) {
     return this.prisma.customer.findMany({
@@ -24,23 +29,60 @@ export class CustomersService {
     return customer;
   }
 
-  create(businessId: string, dto: CreateCustomerDto) {
-    return this.prisma.customer.create({
+  async create(businessId: string, dto: CreateCustomerDto, actor: JwtPayload) {
+    const customer = await this.prisma.customer.create({
       data: { ...dto, businessId },
     });
+    await this.auditService.log({
+      businessId,
+      userId: actor.sub,
+      userEmail: actor.email,
+      entityType: 'Customer',
+      entityId: customer.id,
+      action: 'CREATE',
+      summary: `Created customer "${customer.name}"`,
+      changes: { after: customer },
+    });
+    return customer;
   }
 
-  async update(businessId: string, id: string, dto: UpdateCustomerDto) {
-    await this.findOne(businessId, id);
-    return this.prisma.customer.update({
+  async update(
+    businessId: string,
+    id: string,
+    dto: UpdateCustomerDto,
+    actor: JwtPayload,
+  ) {
+    const before = await this.findOne(businessId, id);
+    const after = await this.prisma.customer.update({
       where: { id },
       data: dto,
     });
+    await this.auditService.log({
+      businessId,
+      userId: actor.sub,
+      userEmail: actor.email,
+      entityType: 'Customer',
+      entityId: id,
+      action: 'UPDATE',
+      summary: `Updated customer "${after.name}"`,
+      changes: { before, after },
+    });
+    return after;
   }
 
-  async remove(businessId: string, id: string) {
-    await this.findOne(businessId, id);
+  async remove(businessId: string, id: string, actor: JwtPayload) {
+    const customer = await this.findOne(businessId, id);
     await this.prisma.customer.delete({ where: { id } });
+    await this.auditService.log({
+      businessId,
+      userId: actor.sub,
+      userEmail: actor.email,
+      entityType: 'Customer',
+      entityId: id,
+      action: 'DELETE',
+      summary: `Deleted customer "${customer.name}"`,
+      changes: { before: customer },
+    });
     return { success: true };
   }
 
