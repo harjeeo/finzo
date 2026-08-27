@@ -144,6 +144,7 @@ model Product {
 
   business          Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   salesInvoiceItems SalesInvoiceItem[]
+  purchaseBillItems PurchaseBillItem[]
 
   @@index([businessId])
   @@map("products")
@@ -206,12 +207,31 @@ model PurchaseBill {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  supplier Supplier @relation(fields: [supplierId], references: [id])
+  business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  supplier Supplier           @relation(fields: [supplierId], references: [id])
+  items    PurchaseBillItem[]
 
   @@unique([businessId, billNumber])
   @@index([businessId])
   @@map("purchase_bills")
+}
+
+model PurchaseBillItem {
+  id             String  @id @default(cuid())
+  purchaseBillId String
+  productId      String
+  productName    String
+  quantity       Decimal @db.Decimal(14, 2)
+  unitPrice      Decimal @db.Decimal(14, 2)
+  gstRate        Decimal @db.Decimal(5, 2)
+  taxAmount      Decimal @db.Decimal(14, 2)
+  lineTotal      Decimal @db.Decimal(14, 2)
+
+  purchaseBill PurchaseBill @relation(fields: [purchaseBillId], references: [id], onDelete: Cascade)
+  product      Product      @relation(fields: [productId], references: [id])
+
+  @@index([purchaseBillId])
+  @@map("purchase_bill_items")
 }
 
 model Expense {
