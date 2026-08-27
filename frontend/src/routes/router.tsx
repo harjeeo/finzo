@@ -4,6 +4,7 @@ import { AuthLayout } from "../layouts/AuthLayout";
 import { Dashboard } from "../pages/Dashboard";
 import { Login } from "../pages/Login";
 import { Register } from "../pages/Register";
+import { Customers } from "../pages/Customers";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { PublicOnlyRoute } from "./PublicOnlyRoute";
@@ -29,10 +30,7 @@ export const router = createBrowserRouter([
         element: <DashboardLayout />,
         children: [
           { index: true, element: <Dashboard /> },
-          {
-            path: "customers",
-            element: <PlaceholderPage title="Customers" />,
-          },
+          { path: "customers", element: <Customers /> },
           {
             path: "suppliers",
             element: <PlaceholderPage title="Suppliers" />,
