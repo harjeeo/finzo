@@ -13,6 +13,7 @@ import { SalesInvoiceDetail } from "../pages/SalesInvoiceDetail";
 import { Purchase } from "../pages/Purchase";
 import { NewPurchaseBill } from "../pages/NewPurchaseBill";
 import { PurchaseBillDetail } from "../pages/PurchaseBillDetail";
+import { Expenses } from "../pages/Expenses";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { PublicOnlyRoute } from "./PublicOnlyRoute";
@@ -48,7 +49,7 @@ export const router = createBrowserRouter([
           { path: "purchase/new", element: <NewPurchaseBill /> },
           { path: "purchase/:id", element: <PurchaseBillDetail /> },
           { path: "billing", element: <PlaceholderPage title="Billing / POS" /> },
-          { path: "expenses", element: <PlaceholderPage title="Expenses" /> },
+          { path: "expenses", element: <Expenses /> },
           { path: "reports", element: <PlaceholderPage title="Reports" /> },
           { path: "staff", element: <PlaceholderPage title="Staff" /> },
           { path: "settings", element: <PlaceholderPage title="Settings" /> },
