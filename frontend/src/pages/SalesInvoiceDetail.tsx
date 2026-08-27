@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft01Icon, Delete02Icon } from "hugeicons-react";
+import { ArrowLeft01Icon, Delete02Icon, PrinterIcon } from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
 import { canDeleteSales, hasRole } from "../lib/permissions";
 import {
@@ -60,15 +60,24 @@ export function SalesInvoiceDetail() {
             {new Date(invoice.invoiceDate).toLocaleDateString("en-IN")}
           </p>
         </div>
-        {canDelete && (
-          <button
-            onClick={handleDelete}
-            className="flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+        <div className="flex items-center gap-2">
+          <Link
+            to={`/sales/${id}/print`}
+            className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
-            <Delete02Icon size={16} />
-            Delete
-          </button>
-        )}
+            <PrinterIcon size={16} />
+            Print
+          </Link>
+          {canDelete && (
+            <button
+              onClick={handleDelete}
+              className="flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+            >
+              <Delete02Icon size={16} />
+              Delete
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mt-6 max-w-3xl overflow-hidden rounded-xl border border-gray-200 bg-white">

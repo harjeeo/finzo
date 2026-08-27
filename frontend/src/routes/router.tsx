@@ -18,6 +18,8 @@ import { Reports } from "../pages/Reports";
 import { Staff } from "../pages/Staff";
 import { Settings } from "../pages/Settings";
 import { Billing } from "../pages/Billing";
+import { SalesInvoicePrint } from "../pages/SalesInvoicePrint";
+import { PurchaseBillPrint } from "../pages/PurchaseBillPrint";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { PublicOnlyRoute } from "./PublicOnlyRoute";
 import { RequireRole } from "./RequireRole";
@@ -38,6 +40,8 @@ export const router = createBrowserRouter([
   {
     element: <ProtectedRoute />,
     children: [
+      { path: "sales/:id/print", element: <SalesInvoicePrint /> },
+      { path: "purchase/:id/print", element: <PurchaseBillPrint /> },
       {
         path: "/",
         element: <DashboardLayout />,
