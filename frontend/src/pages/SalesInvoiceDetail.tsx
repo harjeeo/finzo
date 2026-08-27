@@ -4,10 +4,12 @@ import { ArrowLeft01Icon, Delete02Icon, PrinterIcon } from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
 import { canDeleteSales, hasRole } from "../lib/permissions";
 import {
+  addSalesPayment,
   deleteSalesInvoice,
   getSalesInvoice,
   type SalesInvoice,
 } from "../lib/sales-api";
+import { RecordPaymentModal } from "../components/RecordPaymentModal";
 
 export function SalesInvoiceDetail() {
   const { id } = useParams<{ id: string }>();
@@ -18,15 +20,20 @@ export function SalesInvoiceDetail() {
   const [invoice, setInvoice] = useState<SalesInvoice | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  useEffect(() => {
+  const loadInvoice = () => {
     if (!accessToken || !id) return;
-    getSalesInvoice(accessToken, id)
+    return getSalesInvoice(accessToken, id)
       .then(setInvoice)
       .catch((err) =>
         setError(err instanceof Error ? err.message : "Failed to load"),
-      )
-      .finally(() => setIsLoading(false));
+      );
+  };
+
+  useEffect(() => {
+    loadInvoice()?.finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accessToken, id]);
 
   const handleDelete = async () => {
@@ -36,9 +43,23 @@ export function SalesInvoiceDetail() {
     navigate("/sales");
   };
 
+  const handleRecordPayment = async (input: {
+    amount: number;
+    paymentMode: string;
+    reference?: string;
+  }) => {
+    if (!accessToken || !id) return;
+    const updated = await addSalesPayment(accessToken, id, input);
+    setInvoice(updated);
+    setShowPaymentModal(false);
+  };
+
   if (isLoading) return <p className="text-sm text-gray-500">Loading...</p>;
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!invoice) return null;
+
+  const balanceDue = Number(invoice.grandTotal) - Number(invoice.amountPaid);
+  const canRecordPayment = balanceDue > 0 && invoice.status !== "CANCELLED";
 
   return (
     <div>
@@ -127,8 +148,70 @@ export function SalesInvoiceDetail() {
             <span>Grand Total</span>
             <span>₹{invoice.grandTotal}</span>
           </div>
+          <div className="flex justify-between text-gray-600">
+            <span>Amount Paid</span>
+            <span>₹{invoice.amountPaid}</span>
+          </div>
+          <div className="flex justify-between font-medium text-gray-900">
+            <span>Balance Due</span>
+            <span>₹{balanceDue.toFixed(2)}</span>
+          </div>
         </div>
       </div>
+
+      <div className="mt-6 max-w-3xl overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+          <h2 className="text-sm font-medium text-gray-700">Payment History</h2>
+          {canRecordPayment && (
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
+            >
+              Record Payment
+            </button>
+          )}
+        </div>
+        {!invoice.payments || invoice.payments.length === 0 ? (
+          <p className="p-4 text-sm text-gray-500">No payments recorded yet.</p>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">Date</th>
+                <th className="px-4 py-2 font-medium">Mode</th>
+                <th className="px-4 py-2 font-medium">Reference</th>
+                <th className="px-4 py-2 font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {invoice.payments.map((payment) => (
+                <tr key={payment.id}>
+                  <td className="px-4 py-2 text-gray-600">
+                    {new Date(payment.paymentDate).toLocaleDateString("en-IN")}
+                  </td>
+                  <td className="px-4 py-2 text-gray-600">
+                    {payment.paymentMode}
+                  </td>
+                  <td className="px-4 py-2 text-gray-600">
+                    {payment.reference || "-"}
+                  </td>
+                  <td className="px-4 py-2 font-medium text-gray-900">
+                    ₹{payment.amount}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {showPaymentModal && (
+        <RecordPaymentModal
+          balanceDue={balanceDue}
+          onClose={() => setShowPaymentModal(false)}
+          onSubmit={handleRecordPayment}
+        />
+      )}
     </div>
   );
 }

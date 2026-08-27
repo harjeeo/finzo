@@ -3,10 +3,12 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft01Icon, Delete02Icon, PrinterIcon } from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
 import {
+  addPurchasePayment,
   deletePurchaseBill,
   getPurchaseBill,
   type PurchaseBill,
 } from "../lib/purchases-api";
+import { RecordPaymentModal } from "../components/RecordPaymentModal";
 
 export function PurchaseBillDetail() {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +18,7 @@ export function PurchaseBillDetail() {
   const [bill, setBill] = useState<PurchaseBill | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
     if (!accessToken || !id) return;
@@ -34,9 +37,23 @@ export function PurchaseBillDetail() {
     navigate("/purchase");
   };
 
+  const handleRecordPayment = async (input: {
+    amount: number;
+    paymentMode: string;
+    reference?: string;
+  }) => {
+    if (!accessToken || !id) return;
+    const updated = await addPurchasePayment(accessToken, id, input);
+    setBill(updated);
+    setShowPaymentModal(false);
+  };
+
   if (isLoading) return <p className="text-sm text-gray-500">Loading...</p>;
   if (error) return <p className="text-sm text-red-600">{error}</p>;
   if (!bill) return null;
+
+  const balanceDue = Number(bill.grandTotal) - Number(bill.amountPaid);
+  const canRecordPayment = balanceDue > 0 && bill.status !== "CANCELLED";
 
   return (
     <div>
@@ -123,8 +140,70 @@ export function PurchaseBillDetail() {
             <span>Grand Total</span>
             <span>₹{bill.grandTotal}</span>
           </div>
+          <div className="flex justify-between text-gray-600">
+            <span>Amount Paid</span>
+            <span>₹{bill.amountPaid}</span>
+          </div>
+          <div className="flex justify-between font-medium text-gray-900">
+            <span>Balance Due</span>
+            <span>₹{balanceDue.toFixed(2)}</span>
+          </div>
         </div>
       </div>
+
+      <div className="mt-6 max-w-3xl overflow-hidden rounded-xl border border-gray-200 bg-white">
+        <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
+          <h2 className="text-sm font-medium text-gray-700">Payment History</h2>
+          {canRecordPayment && (
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
+            >
+              Record Payment
+            </button>
+          )}
+        </div>
+        {!bill.payments || bill.payments.length === 0 ? (
+          <p className="p-4 text-sm text-gray-500">No payments recorded yet.</p>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase text-gray-500">
+              <tr>
+                <th className="px-4 py-2 font-medium">Date</th>
+                <th className="px-4 py-2 font-medium">Mode</th>
+                <th className="px-4 py-2 font-medium">Reference</th>
+                <th className="px-4 py-2 font-medium">Amount</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {bill.payments.map((payment) => (
+                <tr key={payment.id}>
+                  <td className="px-4 py-2 text-gray-600">
+                    {new Date(payment.paymentDate).toLocaleDateString("en-IN")}
+                  </td>
+                  <td className="px-4 py-2 text-gray-600">
+                    {payment.paymentMode}
+                  </td>
+                  <td className="px-4 py-2 text-gray-600">
+                    {payment.reference || "-"}
+                  </td>
+                  <td className="px-4 py-2 font-medium text-gray-900">
+                    ₹{payment.amount}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {showPaymentModal && (
+        <RecordPaymentModal
+          balanceDue={balanceDue}
+          onClose={() => setShowPaymentModal(false)}
+          onSubmit={handleRecordPayment}
+        />
+      )}
     </div>
   );
 }

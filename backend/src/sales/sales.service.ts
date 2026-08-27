@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto.js';
+import { CreatePaymentDto } from './dto/create-payment.dto.js';
 
 @Injectable()
 export class SalesService {
@@ -21,12 +22,59 @@ export class SalesService {
   async findOne(businessId: string, id: string) {
     const invoice = await this.prisma.salesInvoice.findFirst({
       where: { id, businessId },
-      include: { customer: true, items: true },
+      include: {
+        customer: true,
+        items: true,
+        payments: { orderBy: { paymentDate: 'desc' } },
+      },
     });
     if (!invoice) {
       throw new NotFoundException('Sales invoice not found');
     }
     return invoice;
+  }
+
+  async addPayment(businessId: string, id: string, dto: CreatePaymentDto) {
+    const invoice = await this.findOne(businessId, id);
+
+    if (invoice.status === 'CANCELLED') {
+      throw new BadRequestException('Cannot record a payment on a cancelled invoice');
+    }
+
+    const balanceDue = Number(invoice.grandTotal) - Number(invoice.amountPaid);
+    if (dto.amount > balanceDue) {
+      throw new BadRequestException(
+        `Payment amount exceeds balance due (₹${balanceDue.toFixed(2)})`,
+      );
+    }
+
+    const newAmountPaid = Number(invoice.amountPaid) + dto.amount;
+    const newStatus =
+      newAmountPaid >= Number(invoice.grandTotal)
+        ? 'PAID'
+        : 'PARTIALLY_PAID';
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.salesPayment.create({
+        data: {
+          salesInvoiceId: id,
+          amount: dto.amount,
+          paymentMode: dto.paymentMode ?? 'CASH',
+          reference: dto.reference,
+          paymentDate: dto.paymentDate ? new Date(dto.paymentDate) : undefined,
+        },
+      });
+
+      return tx.salesInvoice.update({
+        where: { id },
+        data: { amountPaid: newAmountPaid, status: newStatus },
+        include: {
+          customer: true,
+          items: true,
+          payments: { orderBy: { paymentDate: 'desc' } },
+        },
+      });
+    });
   }
 
   async create(businessId: string, dto: CreateSalesInvoiceDto) {

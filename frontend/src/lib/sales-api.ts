@@ -12,6 +12,14 @@ export interface SalesInvoiceItem {
   lineTotal: string;
 }
 
+export interface SalesPayment {
+  id: string;
+  amount: string;
+  paymentMode: string;
+  reference: string | null;
+  paymentDate: string;
+}
+
 export interface SalesInvoice {
   id: string;
   invoiceNumber: string;
@@ -25,6 +33,14 @@ export interface SalesInvoice {
   paymentMode: string | null;
   customer: Customer;
   items?: SalesInvoiceItem[];
+  payments?: SalesPayment[];
+}
+
+export interface PaymentInput {
+  amount: number;
+  paymentMode?: string;
+  reference?: string;
+  paymentDate?: string;
 }
 
 export interface SalesInvoiceItemInput {
@@ -60,6 +76,18 @@ export function createSalesInvoice(token: string, input: SalesInvoiceInput) {
 export function deleteSalesInvoice(token: string, id: string) {
   return apiFetch<{ success: boolean }>(`/sales-invoices/${id}`, {
     method: "DELETE",
+    token,
+  });
+}
+
+export function addSalesPayment(
+  token: string,
+  id: string,
+  input: PaymentInput,
+) {
+  return apiFetch<SalesInvoice>(`/sales-invoices/${id}/payments`, {
+    method: "POST",
+    body: input,
     token,
   });
 }

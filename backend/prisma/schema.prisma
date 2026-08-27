@@ -169,10 +169,26 @@ model SalesInvoice {
   business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customer Customer           @relation(fields: [customerId], references: [id])
   items    SalesInvoiceItem[]
+  payments SalesPayment[]
 
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
   @@map("sales_invoices")
+}
+
+model SalesPayment {
+  id             String   @id @default(cuid())
+  salesInvoiceId String
+  amount         Decimal  @db.Decimal(14, 2)
+  paymentMode    String   @default("CASH")
+  reference      String?
+  paymentDate    DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
+
+  @@index([salesInvoiceId])
+  @@map("sales_payments")
 }
 
 model SalesInvoiceItem {
@@ -211,10 +227,26 @@ model PurchaseBill {
   business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   supplier Supplier           @relation(fields: [supplierId], references: [id])
   items    PurchaseBillItem[]
+  payments PurchasePayment[]
 
   @@unique([businessId, billNumber])
   @@index([businessId])
   @@map("purchase_bills")
+}
+
+model PurchasePayment {
+  id             String   @id @default(cuid())
+  purchaseBillId String
+  amount         Decimal  @db.Decimal(14, 2)
+  paymentMode    String   @default("CASH")
+  reference      String?
+  paymentDate    DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  purchaseBill PurchaseBill @relation(fields: [purchaseBillId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseBillId])
+  @@map("purchase_payments")
 }
 
 model PurchaseBillItem {

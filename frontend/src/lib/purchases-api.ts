@@ -12,6 +12,14 @@ export interface PurchaseBillItem {
   lineTotal: string;
 }
 
+export interface PurchasePayment {
+  id: string;
+  amount: string;
+  paymentMode: string;
+  reference: string | null;
+  paymentDate: string;
+}
+
 export interface PurchaseBill {
   id: string;
   billNumber: string;
@@ -24,6 +32,14 @@ export interface PurchaseBill {
   amountPaid: string;
   supplier: Supplier;
   items?: PurchaseBillItem[];
+  payments?: PurchasePayment[];
+}
+
+export interface PaymentInput {
+  amount: number;
+  paymentMode?: string;
+  reference?: string;
+  paymentDate?: string;
 }
 
 export interface PurchaseBillItemInput {
@@ -57,6 +73,18 @@ export function createPurchaseBill(token: string, input: PurchaseBillInput) {
 export function deletePurchaseBill(token: string, id: string) {
   return apiFetch<{ success: boolean }>(`/purchase-bills/${id}`, {
     method: "DELETE",
+    token,
+  });
+}
+
+export function addPurchasePayment(
+  token: string,
+  id: string,
+  input: PaymentInput,
+) {
+  return apiFetch<PurchaseBill>(`/purchase-bills/${id}/payments`, {
+    method: "POST",
+    body: input,
     token,
   });
 }

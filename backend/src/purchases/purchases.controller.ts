@@ -13,6 +13,7 @@ import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentBusinessId } from '../common/decorators/current-business-id.decorator.js';
 import { PurchasesService } from './purchases.service.js';
 import { CreatePurchaseBillDto } from './dto/create-purchase-bill.dto.js';
+import { CreatePaymentDto } from './dto/create-payment.dto.js';
 
 @Roles('MANAGER', 'ACCOUNTANT')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -36,6 +37,15 @@ export class PurchasesController {
     @Body() dto: CreatePurchaseBillDto,
   ) {
     return this.purchasesService.create(businessId, dto);
+  }
+
+  @Post(':id/payments')
+  addPayment(
+    @CurrentBusinessId() businessId: string,
+    @Param('id') id: string,
+    @Body() dto: CreatePaymentDto,
+  ) {
+    return this.purchasesService.addPayment(businessId, id, dto);
   }
 
   @Delete(':id')

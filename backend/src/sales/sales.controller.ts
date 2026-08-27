@@ -13,6 +13,7 @@ import { Roles } from '../common/decorators/roles.decorator.js';
 import { CurrentBusinessId } from '../common/decorators/current-business-id.decorator.js';
 import { SalesService } from './sales.service.js';
 import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto.js';
+import { CreatePaymentDto } from './dto/create-payment.dto.js';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('sales-invoices')
@@ -35,6 +36,15 @@ export class SalesController {
     @Body() dto: CreateSalesInvoiceDto,
   ) {
     return this.salesService.create(businessId, dto);
+  }
+
+  @Post(':id/payments')
+  addPayment(
+    @CurrentBusinessId() businessId: string,
+    @Param('id') id: string,
+    @Body() dto: CreatePaymentDto,
+  ) {
+    return this.salesService.addPayment(businessId, id, dto);
   }
 
   @Roles('MANAGER')
