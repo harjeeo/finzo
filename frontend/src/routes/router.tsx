@@ -6,6 +6,7 @@ import { Login } from "../pages/Login";
 import { Register } from "../pages/Register";
 import { Customers } from "../pages/Customers";
 import { Suppliers } from "../pages/Suppliers";
+import { Products } from "../pages/Products";
 import { PlaceholderPage } from "../pages/PlaceholderPage";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { PublicOnlyRoute } from "./PublicOnlyRoute";
@@ -33,7 +34,7 @@ export const router = createBrowserRouter([
           { index: true, element: <Dashboard /> },
           { path: "customers", element: <Customers /> },
           { path: "suppliers", element: <Suppliers /> },
-          { path: "products", element: <PlaceholderPage title="Products" /> },
+          { path: "products", element: <Products /> },
           { path: "sales", element: <PlaceholderPage title="Sales" /> },
           { path: "purchase", element: <PlaceholderPage title="Purchase" /> },
           { path: "billing", element: <PlaceholderPage title="Billing / POS" /> },
