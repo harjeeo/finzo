@@ -118,9 +118,13 @@ export function Billing() {
     }
   };
 
+  const showCart = cart.length > 0;
+
   return (
-    <div className="flex h-[calc(100vh-3rem)] gap-4">
-      <div className="flex flex-1 flex-col">
+    <div className="h-[calc(100vh-3rem)]">
+      <div
+        className={`flex h-full flex-col ${showCart ? "pr-96" : ""}`}
+      >
         <h1 className="text-2xl font-semibold text-gray-900">Billing / POS</h1>
 
         <div className="relative mt-4">
@@ -137,7 +141,7 @@ export function Billing() {
           />
         </div>
 
-        <div className="mt-4 grid flex-1 grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4">
+        <div className="mt-4 grid flex-1 auto-rows-min grid-cols-2 content-start items-start gap-3 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4">
           {filteredProducts.map((product) => (
             <button
               key={product.id}
@@ -162,7 +166,8 @@ export function Billing() {
         </div>
       </div>
 
-      <div className="flex w-96 shrink-0 flex-col rounded-xl border border-gray-200 bg-white p-4">
+      {showCart && (
+        <div className="fixed inset-y-0 right-0 z-10 flex w-96 flex-col border-l border-gray-200 bg-white p-4 shadow-lg">
         <div>
           <label className="block text-sm font-medium text-gray-700">
             Customer *
@@ -272,7 +277,8 @@ export function Billing() {
           <Add01Icon size={18} />
           {isSubmitting ? "Processing..." : `Charge ₹${grandTotal.toFixed(2)}`}
         </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
