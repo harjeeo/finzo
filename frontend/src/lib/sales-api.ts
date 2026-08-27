@@ -22,6 +22,7 @@ export interface SalesInvoice {
   discountTotal: string;
   grandTotal: string;
   amountPaid: string;
+  paymentMode: string | null;
   customer: Customer;
   items?: SalesInvoiceItem[];
 }
@@ -35,6 +36,8 @@ export interface SalesInvoiceItemInput {
 export interface SalesInvoiceInput {
   customerId: string;
   discountTotal?: number;
+  amountPaid?: number;
+  paymentMode?: string;
   items: SalesInvoiceItemInput[];
 }
 

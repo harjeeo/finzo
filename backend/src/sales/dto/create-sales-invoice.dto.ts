@@ -34,6 +34,15 @@ export class CreateSalesInvoiceDto {
   @Min(0)
   discountTotal?: number;
 
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  amountPaid?: number;
+
+  @IsOptional()
+  @IsString()
+  paymentMode?: string;
+
   @ValidateNested({ each: true })
   @Type(() => SalesInvoiceItemInputDto)
   @ArrayMinSize(1)

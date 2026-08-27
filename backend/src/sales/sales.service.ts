@@ -81,6 +81,13 @@ export class SalesService {
     const taxTotal = lineItems.reduce((sum, li) => sum + li.taxAmount, 0);
     const discountTotal = dto.discountTotal ?? 0;
     const grandTotal = subtotal + taxTotal - discountTotal;
+    const amountPaid = Math.min(dto.amountPaid ?? 0, grandTotal);
+    const status =
+      amountPaid >= grandTotal && grandTotal > 0
+        ? 'PAID'
+        : amountPaid > 0
+          ? 'PARTIALLY_PAID'
+          : 'UNPAID';
 
     const business = await this.prisma.business.findUniqueOrThrow({
       where: { id: businessId },
@@ -96,11 +103,13 @@ export class SalesService {
           businessId,
           customerId: dto.customerId,
           invoiceNumber,
-          status: 'UNPAID',
+          status,
           subtotal,
           taxTotal,
           discountTotal,
           grandTotal,
+          amountPaid,
+          paymentMode: dto.paymentMode,
           items: {
             create: lineItems.map((li) => ({
               productId: li.productId,

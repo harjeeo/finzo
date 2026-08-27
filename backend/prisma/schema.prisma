@@ -162,6 +162,7 @@ model SalesInvoice {
   discountTotal Decimal       @default(0) @db.Decimal(14, 2)
   grandTotal    Decimal       @default(0) @db.Decimal(14, 2)
   amountPaid    Decimal       @default(0) @db.Decimal(14, 2)
+  paymentMode   String?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
