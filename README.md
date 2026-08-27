@@ -41,6 +41,7 @@ npm run start:dev       # http://localhost:3000
 ```bash
 cd frontend
 npm install
+cp .env.example .env     # adjust VITE_API_URL if needed
 npm run dev              # http://localhost:5173
 ```
 
