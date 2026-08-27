@@ -34,6 +34,10 @@ export class CreateSalesInvoiceDto {
   branchId?: string;
 
   @IsOptional()
+  @IsString()
+  godownId?: string;
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   discountTotal?: number;

@@ -6,6 +6,7 @@ import { listCustomers, type Customer } from "../lib/customers-api";
 import { listProducts, type Product } from "../lib/products-api";
 import { createSalesInvoice } from "../lib/sales-api";
 import { listBranches, type Branch } from "../lib/branches-api";
+import { listGodowns, type Godown } from "../lib/godowns-api";
 
 interface LineItem {
   productId: string;
@@ -20,8 +21,10 @@ export function NewSalesInvoice() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [godowns, setGodowns] = useState<Godown[]>([]);
   const [customerId, setCustomerId] = useState("");
   const [branchId, setBranchId] = useState("");
+  const [godownId, setGodownId] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { productId: "", quantity: "1", unitPrice: "" },
   ]);
@@ -38,6 +41,15 @@ export function NewSalesInvoice() {
       if (defaultBranch) setBranchId(defaultBranch.id);
     });
   }, [accessToken]);
+
+  useEffect(() => {
+    if (!accessToken || !branchId) return;
+    listGodowns(accessToken, branchId).then((data) => {
+      setGodowns(data);
+      const defaultGodown = data.find((g) => g.isDefault) ?? data[0];
+      setGodownId(defaultGodown ? defaultGodown.id : "");
+    });
+  }, [accessToken, branchId]);
 
   const productMap = new Map(products.map((p) => [p.id, p]));
 
@@ -113,6 +125,7 @@ export function NewSalesInvoice() {
       const invoice = await createSalesInvoice(accessToken, {
         customerId,
         branchId: branchId || undefined,
+        godownId: godownId || undefined,
         items: validLines.map((line) => ({
           productId: line.productId,
           quantity: Number(line.quantity),
@@ -149,23 +162,46 @@ export function NewSalesInvoice() {
           </select>
         </div>
 
-        {branches.length > 1 && (
-          <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700">
-              Branch
-            </label>
-            <select
-              value={branchId}
-              onChange={(e) => setBranchId(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
-            >
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name}
-                  {b.isDefault ? " (Default)" : ""}
-                </option>
-              ))}
-            </select>
+        {(branches.length > 1 || godowns.length > 1) && (
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            {branches.length > 1 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Branch
+                </label>
+                <select
+                  value={branchId}
+                  onChange={(e) => setBranchId(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                >
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                      {b.isDefault ? " (Default)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {godowns.length > 1 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Godown
+                </label>
+                <select
+                  value={godownId}
+                  onChange={(e) => setGodownId(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                >
+                  {godowns.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                      {g.isDefault ? " (Default)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
         )}
 

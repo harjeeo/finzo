@@ -13,6 +13,9 @@ import {
   Building03Icon,
   Calculator01Icon,
   FileSecurityIcon,
+  WarehouseIcon,
+  PackageMoving01Icon,
+  HourglassIcon,
 } from "hugeicons-react";
 import type { HugeiconsIconProps } from "@hugeicons/react";
 import type { ReactElement } from "react";
@@ -62,6 +65,24 @@ export const navItems: NavItem[] = [
     path: "/branches",
     icon: Building03Icon,
     roles: ["MANAGER"],
+  },
+  {
+    label: "Godowns",
+    path: "/godowns",
+    icon: WarehouseIcon,
+    roles: ["MANAGER"],
+  },
+  {
+    label: "Stock Transfers",
+    path: "/stock-transfers",
+    icon: PackageMoving01Icon,
+    roles: ["MANAGER", "ACCOUNTANT"],
+  },
+  {
+    label: "Expiry Report",
+    path: "/expiry-report",
+    icon: HourglassIcon,
+    roles: ["MANAGER", "ACCOUNTANT"],
   },
   {
     label: "Staff",

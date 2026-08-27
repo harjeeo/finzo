@@ -31,6 +31,9 @@ export function ProductFormModal({
   const [minStockLevel, setMinStockLevel] = useState(
     product?.minStockLevel ?? "0",
   );
+  const [tracksBatches, setTracksBatches] = useState(
+    product?.tracksBatches ?? false,
+  );
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,6 +53,7 @@ export function ProductFormModal({
         gstRate: gstRate ? Number(gstRate) : undefined,
         openingStock: openingStock ? Number(openingStock) : undefined,
         minStockLevel: minStockLevel ? Number(minStockLevel) : undefined,
+        tracksBatches,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -195,6 +199,16 @@ export function ProductFormModal({
               />
             </div>
           </div>
+
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={tracksBatches}
+              onChange={(e) => setTracksBatches(e.target.checked)}
+              className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            />
+            Track batches &amp; expiry dates for this product
+          </label>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 

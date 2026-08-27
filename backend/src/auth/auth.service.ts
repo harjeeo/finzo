@@ -69,10 +69,19 @@ export class AuthService {
         },
       });
 
-      await tx.branch.create({
+      const mainBranch = await tx.branch.create({
         data: {
           businessId: createdBusiness.id,
           name: 'Main Branch',
+          isDefault: true,
+        },
+      });
+
+      await tx.godown.create({
+        data: {
+          businessId: createdBusiness.id,
+          branchId: mainBranch.id,
+          name: 'Main Godown',
           isDefault: true,
         },
       });

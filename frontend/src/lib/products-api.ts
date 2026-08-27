@@ -14,6 +14,7 @@ export interface Product {
   openingStock: string;
   currentStock: string;
   minStockLevel: string;
+  tracksBatches: boolean;
   createdAt: string;
 }
 
@@ -29,6 +30,7 @@ export interface ProductInput {
   gstRate?: number;
   openingStock?: number;
   minStockLevel?: number;
+  tracksBatches?: boolean;
 }
 
 export function listProducts(token: string) {

@@ -4,7 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { Prisma } from '../generated/prisma/client.js';
 import { BranchesService } from '../branches/branches.service.js';
+import { GodownsService } from '../godowns/godowns.service.js';
+import { StockService } from '../inventory/stock.service.js';
 import { AccountsService } from '../accounting/accounts.service.js';
 import { JournalService, type PostLine } from '../accounting/journal.service.js';
 import { SYSTEM_ACCOUNT_CODES, paymentModeAccountCode } from '../accounting/default-accounts.js';
@@ -19,6 +22,8 @@ export class PurchasesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly branchesService: BranchesService,
+    private readonly godownsService: GodownsService,
+    private readonly stockService: StockService,
     private readonly accountsService: AccountsService,
     private readonly journalService: JournalService,
     private readonly auditService: AuditService,
@@ -155,10 +160,29 @@ export class PurchasesService {
         include: { items: true },
       });
 
+      const returnGodownId = await this.resolveBillGodownId(tx, businessId, bill);
       for (const item of dto.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { currentStock: { decrement: item.quantity } },
+        const billItem = billItemMap.get(item.productId)!;
+        const batchId = billItem.batchNumber
+          ? (
+              await tx.batch.findUnique({
+                where: {
+                  productId_batchNumber: {
+                    productId: item.productId,
+                    batchNumber: billItem.batchNumber,
+                  },
+                },
+              })
+            )?.id ?? null
+          : null;
+        await this.stockService.remove(tx, {
+          businessId,
+          productId: item.productId,
+          godownId: returnGodownId,
+          batchId,
+          quantity: item.quantity,
+          sourceType: 'PURCHASE_RETURN',
+          sourceId: id,
         });
       }
 
@@ -181,6 +205,18 @@ export class PurchasesService {
 
       return purchaseReturn;
     });
+  }
+
+  /** Falls back to the bill's branch default godown for bills created before godown tracking existed. */
+  private async resolveBillGodownId(
+    tx: Prisma.TransactionClient,
+    businessId: string,
+    bill: { godownId: string | null; branchId: string | null },
+  ) {
+    if (bill.godownId) return bill.godownId;
+    const branchId =
+      bill.branchId ?? (await this.branchesService.getOrCreateDefaultBranch(businessId)).id;
+    return (await this.godownsService.getOrCreateDefaultGodown(businessId, branchId, tx)).id;
   }
 
   async addPayment(businessId: string, id: string, dto: CreatePaymentDto) {
@@ -265,6 +301,19 @@ export class PurchasesService {
       branchId = (await this.branchesService.getOrCreateDefaultBranch(businessId)).id;
     }
 
+    let godownId: string;
+    if (dto.godownId) {
+      const godown = await this.prisma.godown.findFirst({
+        where: { id: dto.godownId, businessId, branchId },
+      });
+      if (!godown) {
+        throw new BadRequestException('Godown not found for this branch');
+      }
+      godownId = godown.id;
+    } else {
+      godownId = (await this.godownsService.getOrCreateDefaultGodown(businessId, branchId)).id;
+    }
+
     const productIds = dto.items.map((item) => item.productId);
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds }, businessId },
@@ -272,9 +321,15 @@ export class PurchasesService {
     const productMap = new Map(products.map((p) => [p.id, p]));
 
     for (const item of dto.items) {
-      if (!productMap.has(item.productId)) {
+      const product = productMap.get(item.productId);
+      if (!product) {
         throw new BadRequestException(
           `Product ${item.productId} not found`,
+        );
+      }
+      if (product.tracksBatches && !item.batchNumber) {
+        throw new BadRequestException(
+          `"${product.name}" tracks batches — a batch number is required`,
         );
       }
     }
@@ -296,6 +351,9 @@ export class PurchasesService {
         taxAmount,
         lineTotal,
         lineSubtotal,
+        batchNumber: item.batchNumber,
+        manufactureDate: item.manufactureDate,
+        expiryDate: item.expiryDate,
       };
     });
 
@@ -314,6 +372,7 @@ export class PurchasesService {
         data: {
           businessId,
           branchId,
+          godownId,
           supplierId: dto.supplierId,
           billNumber,
           status: 'UNPAID',
@@ -330,16 +389,32 @@ export class PurchasesService {
               gstRate: li.gstRate,
               taxAmount: li.taxAmount,
               lineTotal: li.lineTotal,
+              batchNumber: li.batchNumber,
+              manufactureDate: li.manufactureDate,
+              expiryDate: li.expiryDate,
             })),
           },
         },
-        include: { items: true, supplier: true, branch: true },
+        include: { items: true, supplier: true, branch: true, godown: true },
       });
 
       for (const item of dto.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { currentStock: { increment: item.quantity } },
+        await this.stockService.receive(tx, {
+          businessId,
+          productId: item.productId,
+          godownId,
+          quantity: item.quantity,
+          batchInfo: item.batchNumber
+            ? {
+                batchNumber: item.batchNumber,
+                manufactureDate: item.manufactureDate
+                  ? new Date(item.manufactureDate)
+                  : undefined,
+                expiryDate: item.expiryDate ? new Date(item.expiryDate) : undefined,
+              }
+            : undefined,
+          sourceType: 'PURCHASE',
+          sourceId: bill.id,
         });
       }
 
@@ -385,10 +460,28 @@ export class PurchasesService {
     const bill = await this.findOne(businessId, id);
 
     return this.prisma.$transaction(async (tx) => {
+      const godownId = await this.resolveBillGodownId(tx, businessId, bill);
       for (const item of bill.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { currentStock: { decrement: Number(item.quantity) } },
+        const batchId = item.batchNumber
+          ? (
+              await tx.batch.findUnique({
+                where: {
+                  productId_batchNumber: {
+                    productId: item.productId,
+                    batchNumber: item.batchNumber,
+                  },
+                },
+              })
+            )?.id ?? null
+          : null;
+        await this.stockService.remove(tx, {
+          businessId,
+          productId: item.productId,
+          godownId,
+          batchId,
+          quantity: Number(item.quantity),
+          sourceType: 'ADJUSTMENT',
+          sourceId: id,
         });
       }
 

@@ -19,6 +19,8 @@ import { AccountingModule } from './accounting/accounting.module.js';
 import { SuperAdminModule } from './super-admin/super-admin.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { EwayBillModule } from './eway-bill/eway-bill.module.js';
+import { GodownsModule } from './godowns/godowns.module.js';
+import { InventoryModule } from './inventory/inventory.module.js';
 
 @Module({
   imports: [
@@ -40,6 +42,8 @@ import { EwayBillModule } from './eway-bill/eway-bill.module.js';
     SuperAdminModule,
     AuditModule,
     EwayBillModule,
+    GodownsModule,
+    InventoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],

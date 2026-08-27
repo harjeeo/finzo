@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
+  IsDateString,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -22,6 +23,18 @@ export class PurchaseBillItemInputDto {
   @IsNumber()
   @Min(0)
   unitPrice?: number;
+
+  @IsOptional()
+  @IsString()
+  batchNumber?: string;
+
+  @IsOptional()
+  @IsDateString()
+  manufactureDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  expiryDate?: string;
 }
 
 export class CreatePurchaseBillDto {
@@ -32,6 +45,10 @@ export class CreatePurchaseBillDto {
   @IsOptional()
   @IsString()
   branchId?: string;
+
+  @IsOptional()
+  @IsString()
+  godownId?: string;
 
   @IsOptional()
   @IsNumber()

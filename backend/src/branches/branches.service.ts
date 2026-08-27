@@ -25,8 +25,14 @@ export class BranchesService {
   }
 
   create(businessId: string, dto: CreateBranchDto) {
-    return this.prisma.branch.create({
-      data: { ...dto, businessId },
+    return this.prisma.$transaction(async (tx) => {
+      const branch = await tx.branch.create({
+        data: { ...dto, businessId },
+      });
+      await tx.godown.create({
+        data: { businessId, branchId: branch.id, name: 'Main Godown', isDefault: true },
+      });
+      return branch;
     });
   }
 
@@ -55,8 +61,14 @@ export class BranchesService {
     if (existing) {
       return existing;
     }
-    return this.prisma.branch.create({
-      data: { businessId, name: 'Main Branch', isDefault: true },
+    return this.prisma.$transaction(async (tx) => {
+      const branch = await tx.branch.create({
+        data: { businessId, name: 'Main Branch', isDefault: true },
+      });
+      await tx.godown.create({
+        data: { businessId, branchId: branch.id, name: 'Main Godown', isDefault: true },
+      });
+      return branch;
     });
   }
 }

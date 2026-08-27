@@ -73,11 +73,15 @@ export interface PurchaseBillItemInput {
   productId: string;
   quantity: number;
   unitPrice?: number;
+  batchNumber?: string;
+  manufactureDate?: string;
+  expiryDate?: string;
 }
 
 export interface PurchaseBillInput {
   supplierId: string;
   branchId?: string;
+  godownId?: string;
   discountTotal?: number;
   items: PurchaseBillItemInput[];
 }

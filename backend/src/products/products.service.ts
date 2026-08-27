@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { BranchesService } from '../branches/branches.service.js';
+import { GodownsService } from '../godowns/godowns.service.js';
+import { StockService } from '../inventory/stock.service.js';
 import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { CreateProductDto } from './dto/create-product.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
@@ -10,6 +13,9 @@ export class ProductsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
+    private readonly branchesService: BranchesService,
+    private readonly godownsService: GodownsService,
+    private readonly stockService: StockService,
   ) {}
 
   findAll(businessId: string) {
@@ -31,14 +37,40 @@ export class ProductsService {
 
   async create(businessId: string, dto: CreateProductDto, actor: JwtPayload) {
     const openingStock = dto.openingStock ?? 0;
-    const product = await this.prisma.product.create({
-      data: {
-        ...dto,
-        openingStock,
-        currentStock: openingStock,
+
+    const product = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.product.create({
+        data: {
+          ...dto,
+          openingStock,
+          currentStock: 0,
+          businessId,
+        },
+      });
+
+      if (openingStock <= 0) {
+        return created;
+      }
+
+      const defaultBranch = await this.branchesService.getOrCreateDefaultBranch(businessId);
+      const defaultGodown = await this.godownsService.getOrCreateDefaultGodown(
         businessId,
-      },
+        defaultBranch.id,
+        tx,
+      );
+      await this.stockService.receiveExisting(tx, {
+        businessId,
+        productId: created.id,
+        godownId: defaultGodown.id,
+        batchId: null,
+        quantity: openingStock,
+        sourceType: 'ADJUSTMENT',
+        sourceId: created.id,
+      });
+
+      return tx.product.findUniqueOrThrow({ where: { id: created.id } });
     });
+
     await this.auditService.log({
       businessId,
       userId: actor.sub,

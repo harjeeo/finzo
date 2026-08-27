@@ -57,6 +57,16 @@ enum EwayBillStatus {
   CANCELLED
 }
 
+enum StockSourceType {
+  PURCHASE
+  PURCHASE_RETURN
+  SALES
+  SALES_RETURN
+  TRANSFER_OUT
+  TRANSFER_IN
+  ADJUSTMENT
+}
+
 enum JournalSourceType {
   MANUAL
   SALES_INVOICE
@@ -116,6 +126,11 @@ model Business {
   journalEntries  JournalEntry[]
   auditLogs       AuditLog[]
   ewayBills       EwayBill[]
+  godowns         Godown[]
+  batches         Batch[]
+  productStocks   ProductStock[]
+  stockMovements  StockMovement[]
+  stockTransfers  StockTransfer[]
 
   @@map("businesses")
 }
@@ -187,9 +202,119 @@ model Branch {
   salesInvoices SalesInvoice[]
   purchaseBills PurchaseBill[]
   expenses      Expense[]
+  godowns       Godown[]
 
   @@index([businessId])
   @@map("branches")
+}
+
+model Godown {
+  id         String   @id @default(cuid())
+  businessId String
+  branchId   String
+  name       String
+  address    String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch         Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  stocks         ProductStock[]
+  movements      StockMovement[]
+  transfersFrom  StockTransfer[] @relation("TransferFrom")
+  transfersTo    StockTransfer[] @relation("TransferTo")
+  salesInvoices  SalesInvoice[]
+  purchaseBills  PurchaseBill[]
+
+  @@index([businessId])
+  @@index([branchId])
+  @@map("godowns")
+}
+
+model Batch {
+  id              String    @id @default(cuid())
+  businessId      String
+  productId       String
+  batchNumber     String
+  manufactureDate DateTime?
+  expiryDate      DateTime?
+  createdAt       DateTime  @default(now())
+
+  business          Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product           Product                 @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stocks            ProductStock[]
+  movements         StockMovement[]
+  transfers         StockTransfer[]
+  salesConsumptions SalesInvoiceItemBatch[]
+  salesRestorations SalesReturnItemBatch[]
+
+  @@unique([productId, batchNumber])
+  @@index([businessId])
+  @@map("batches")
+}
+
+model ProductStock {
+  id         String   @id @default(cuid())
+  businessId String
+  productId  String
+  godownId   String
+  batchId    String?
+  quantity   Decimal  @default(0) @db.Decimal(14, 2)
+  updatedAt  DateTime @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  godown   Godown   @relation(fields: [godownId], references: [id], onDelete: Cascade)
+  batch    Batch?   @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, godownId, batchId])
+  @@index([businessId])
+  @@map("product_stocks")
+}
+
+model StockMovement {
+  id         String          @id @default(cuid())
+  businessId String
+  productId  String
+  godownId   String
+  batchId    String?
+  quantity   Decimal         @db.Decimal(14, 2)
+  sourceType StockSourceType
+  sourceId   String?
+  notes      String?
+  createdAt  DateTime        @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  godown   Godown   @relation(fields: [godownId], references: [id], onDelete: Cascade)
+  batch    Batch?   @relation(fields: [batchId], references: [id])
+
+  @@index([businessId])
+  @@index([productId, godownId])
+  @@map("stock_movements")
+}
+
+model StockTransfer {
+  id           String   @id @default(cuid())
+  businessId   String
+  productId    String
+  batchId      String?
+  fromGodownId String
+  toGodownId   String
+  quantity     Decimal  @db.Decimal(14, 2)
+  transferDate DateTime @default(now())
+  notes        String?
+  createdAt    DateTime @default(now())
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  batch      Batch?   @relation(fields: [batchId], references: [id])
+  fromGodown Godown   @relation("TransferFrom", fields: [fromGodownId], references: [id])
+  toGodown   Godown   @relation("TransferTo", fields: [toGodownId], references: [id])
+
+  @@index([businessId])
+  @@map("stock_transfers")
 }
 
 // Links a User to a Business with a role — supports multi-business users.
@@ -263,6 +388,7 @@ model Product {
   openingStock  Decimal  @default(0) @db.Decimal(14, 2)
   currentStock  Decimal  @default(0) @db.Decimal(14, 2)
   minStockLevel Decimal  @default(0) @db.Decimal(14, 2)
+  tracksBatches Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -271,6 +397,10 @@ model Product {
   purchaseBillItems   PurchaseBillItem[]
   salesReturnItems    SalesReturnItem[]
   purchaseReturnItems PurchaseReturnItem[]
+  batches             Batch[]
+  stocks              ProductStock[]
+  movements           StockMovement[]
+  transfers           StockTransfer[]
 
   @@index([businessId])
   @@map("products")
@@ -280,6 +410,7 @@ model SalesInvoice {
   id            String        @id @default(cuid())
   businessId    String
   branchId      String?
+  godownId      String?
   customerId    String
   invoiceNumber String
   invoiceDate   DateTime      @default(now())
@@ -295,6 +426,7 @@ model SalesInvoice {
 
   business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   branch   Branch?            @relation(fields: [branchId], references: [id])
+  godown   Godown?            @relation(fields: [godownId], references: [id])
   customer Customer           @relation(fields: [customerId], references: [id])
   items    SalesInvoiceItem[]
   payments SalesPayment[]
@@ -304,6 +436,7 @@ model SalesInvoice {
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
   @@index([branchId])
+  @@index([godownId])
   @@map("sales_invoices")
 }
 
@@ -333,11 +466,25 @@ model SalesInvoiceItem {
   taxAmount      Decimal @db.Decimal(14, 2)
   lineTotal      Decimal @db.Decimal(14, 2)
 
-  salesInvoice SalesInvoice @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
-  product      Product      @relation(fields: [productId], references: [id])
+  salesInvoice SalesInvoice           @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
+  product      Product                @relation(fields: [productId], references: [id])
+  batches      SalesInvoiceItemBatch[]
 
   @@index([salesInvoiceId])
   @@map("sales_invoice_items")
+}
+
+model SalesInvoiceItemBatch {
+  id                 String  @id @default(cuid())
+  salesInvoiceItemId String
+  batchId            String
+  quantity            Decimal @db.Decimal(14, 2)
+
+  salesInvoiceItem SalesInvoiceItem @relation(fields: [salesInvoiceItemId], references: [id], onDelete: Cascade)
+  batch            Batch            @relation(fields: [batchId], references: [id])
+
+  @@index([salesInvoiceItemId])
+  @@map("sales_invoice_item_batches")
 }
 
 model SalesReturn {
@@ -374,17 +521,32 @@ model SalesReturnItem {
   taxAmount     Decimal @db.Decimal(14, 2)
   lineTotal     Decimal @db.Decimal(14, 2)
 
-  salesReturn SalesReturn @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
-  product     Product     @relation(fields: [productId], references: [id])
+  salesReturn SalesReturn             @relation(fields: [salesReturnId], references: [id], onDelete: Cascade)
+  product     Product                 @relation(fields: [productId], references: [id])
+  batches     SalesReturnItemBatch[]
 
   @@index([salesReturnId])
   @@map("sales_return_items")
+}
+
+model SalesReturnItemBatch {
+  id                String  @id @default(cuid())
+  salesReturnItemId String
+  batchId           String
+  quantity          Decimal @db.Decimal(14, 2)
+
+  salesReturnItem SalesReturnItem @relation(fields: [salesReturnItemId], references: [id], onDelete: Cascade)
+  batch           Batch           @relation(fields: [batchId], references: [id])
+
+  @@index([salesReturnItemId])
+  @@map("sales_return_item_batches")
 }
 
 model PurchaseBill {
   id            String        @id @default(cuid())
   businessId    String
   branchId      String?
+  godownId      String?
   supplierId    String
   billNumber    String
   billDate      DateTime      @default(now())
@@ -399,6 +561,7 @@ model PurchaseBill {
 
   business Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
   branch   Branch?            @relation(fields: [branchId], references: [id])
+  godown   Godown?            @relation(fields: [godownId], references: [id])
   supplier Supplier           @relation(fields: [supplierId], references: [id])
   items    PurchaseBillItem[]
   payments PurchasePayment[]
@@ -407,6 +570,7 @@ model PurchaseBill {
   @@unique([businessId, billNumber])
   @@index([businessId])
   @@index([branchId])
+  @@index([godownId])
   @@map("purchase_bills")
 }
 
@@ -426,15 +590,18 @@ model PurchasePayment {
 }
 
 model PurchaseBillItem {
-  id             String  @id @default(cuid())
-  purchaseBillId String
-  productId      String
-  productName    String
-  quantity       Decimal @db.Decimal(14, 2)
-  unitPrice      Decimal @db.Decimal(14, 2)
-  gstRate        Decimal @db.Decimal(5, 2)
-  taxAmount      Decimal @db.Decimal(14, 2)
-  lineTotal      Decimal @db.Decimal(14, 2)
+  id              String    @id @default(cuid())
+  purchaseBillId  String
+  productId       String
+  productName     String
+  quantity        Decimal   @db.Decimal(14, 2)
+  unitPrice       Decimal   @db.Decimal(14, 2)
+  gstRate         Decimal   @db.Decimal(5, 2)
+  taxAmount       Decimal   @db.Decimal(14, 2)
+  lineTotal       Decimal   @db.Decimal(14, 2)
+  batchNumber     String?
+  manufactureDate DateTime?
+  expiryDate      DateTime?
 
   purchaseBill PurchaseBill @relation(fields: [purchaseBillId], references: [id], onDelete: Cascade)
   product      Product      @relation(fields: [productId], references: [id])

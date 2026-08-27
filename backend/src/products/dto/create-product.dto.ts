@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateProductDto {
   @IsNotEmpty()
@@ -49,4 +49,8 @@ export class CreateProductDto {
   @IsNumber()
   @Min(0)
   minStockLevel?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  tracksBatches?: boolean;
 }

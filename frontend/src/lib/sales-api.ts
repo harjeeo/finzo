@@ -79,6 +79,7 @@ export interface SalesInvoiceItemInput {
 export interface SalesInvoiceInput {
   customerId: string;
   branchId?: string;
+  godownId?: string;
   discountTotal?: number;
   amountPaid?: number;
   paymentMode?: string;

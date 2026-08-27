@@ -24,6 +24,9 @@ import { SalesInvoicePrint } from "../pages/SalesInvoicePrint";
 import { PurchaseBillPrint } from "../pages/PurchaseBillPrint";
 import { EwayBillPrint } from "../pages/EwayBillPrint";
 import { AuditLog } from "../pages/AuditLog";
+import { Godowns } from "../pages/Godowns";
+import { StockTransfers } from "../pages/StockTransfers";
+import { ExpiryReport } from "../pages/ExpiryReport";
 import { CustomerLedgerPage } from "../pages/CustomerLedgerPage";
 import { SupplierLedgerPage } from "../pages/SupplierLedgerPage";
 import { AdminLayout } from "../layouts/AdminLayout";
@@ -76,6 +79,8 @@ export const router = createBrowserRouter([
               { path: "expenses", element: <Expenses /> },
               { path: "reports", element: <Reports /> },
               { path: "accounting", element: <Accounting /> },
+              { path: "stock-transfers", element: <StockTransfers /> },
+              { path: "expiry-report", element: <ExpiryReport /> },
             ],
           },
           {
@@ -84,6 +89,7 @@ export const router = createBrowserRouter([
               { path: "staff", element: <Staff /> },
               { path: "settings", element: <Settings /> },
               { path: "branches", element: <Branches /> },
+              { path: "godowns", element: <Godowns /> },
               { path: "audit-log", element: <AuditLog /> },
             ],
           },

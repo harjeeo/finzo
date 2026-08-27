@@ -4,7 +4,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { Prisma } from '../generated/prisma/client.js';
 import { BranchesService } from '../branches/branches.service.js';
+import { GodownsService } from '../godowns/godowns.service.js';
+import { StockService } from '../inventory/stock.service.js';
 import { AccountsService } from '../accounting/accounts.service.js';
 import { JournalService, type PostLine } from '../accounting/journal.service.js';
 import { SYSTEM_ACCOUNT_CODES, paymentModeAccountCode } from '../accounting/default-accounts.js';
@@ -19,6 +22,8 @@ export class SalesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly branchesService: BranchesService,
+    private readonly godownsService: GodownsService,
+    private readonly stockService: StockService,
     private readonly accountsService: AccountsService,
     private readonly journalService: JournalService,
     private readonly auditService: AuditService,
@@ -38,7 +43,8 @@ export class SalesService {
       include: {
         customer: true,
         branch: true,
-        items: true,
+        godown: true,
+        items: { include: { batches: true } },
         payments: { orderBy: { paymentDate: 'desc' } },
         returns: {
           include: { items: true },
@@ -50,6 +56,18 @@ export class SalesService {
       throw new NotFoundException('Sales invoice not found');
     }
     return invoice;
+  }
+
+  /** Falls back to the invoice's branch default godown for invoices created before godown tracking existed. */
+  private async resolveInvoiceGodownId(
+    tx: Prisma.TransactionClient,
+    businessId: string,
+    invoice: { godownId: string | null; branchId: string | null },
+  ) {
+    if (invoice.godownId) return invoice.godownId;
+    const branchId =
+      invoice.branchId ?? (await this.branchesService.getOrCreateDefaultBranch(businessId)).id;
+    return (await this.godownsService.getOrCreateDefaultGodown(businessId, branchId, tx)).id;
   }
 
   async createReturn(businessId: string, id: string, dto: CreateSalesReturnDto) {
@@ -114,6 +132,12 @@ export class SalesService {
     });
     const returnNumber = `CN-${String(returnCount + 1).padStart(6, '0')}`;
 
+    const productIds = [...new Set(dto.items.map((i) => i.productId))];
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds }, businessId },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
+
     return this.prisma.$transaction(async (tx) => {
       const salesReturn = await tx.salesReturn.create({
         data: {
@@ -139,11 +163,79 @@ export class SalesService {
         include: { items: true },
       });
 
-      for (const item of dto.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { currentStock: { increment: item.quantity } },
+      const godownId = await this.resolveInvoiceGodownId(tx, businessId, invoice);
+
+      for (const returnItem of salesReturn.items) {
+        const product = productMap.get(returnItem.productId)!;
+        const quantity = Number(returnItem.quantity);
+
+        if (!product.tracksBatches) {
+          await this.stockService.receiveExisting(tx, {
+            businessId,
+            productId: returnItem.productId,
+            godownId,
+            batchId: null,
+            quantity,
+            sourceType: 'SALES_RETURN',
+            sourceId: salesReturn.id,
+          });
+          continue;
+        }
+
+        const invoiceItem = invoiceItemMap.get(returnItem.productId)!;
+        const originalBatches = invoiceItem.batches; // consumption order (FEFO)
+        const originalBatchIds = originalBatches.map((b) => b.batchId);
+
+        const priorRestorations = await tx.salesReturnItemBatch.findMany({
+          where: {
+            batchId: { in: originalBatchIds },
+            salesReturnItem: {
+              productId: returnItem.productId,
+              salesReturn: { salesInvoiceId: id },
+            },
+          },
         });
+        const alreadyRestoredByBatch = new Map<string, number>();
+        for (const r of priorRestorations) {
+          alreadyRestoredByBatch.set(
+            r.batchId,
+            (alreadyRestoredByBatch.get(r.batchId) ?? 0) + Number(r.quantity),
+          );
+        }
+
+        let remaining = quantity;
+        for (const consumption of originalBatches) {
+          if (remaining <= 0) break;
+          const originallyConsumed = Number(consumption.quantity);
+          const alreadyRestored = alreadyRestoredByBatch.get(consumption.batchId) ?? 0;
+          const capacity = originallyConsumed - alreadyRestored;
+          const take = Math.min(capacity, remaining);
+          if (take <= 0) continue;
+
+          await this.stockService.receiveExisting(tx, {
+            businessId,
+            productId: returnItem.productId,
+            godownId,
+            batchId: consumption.batchId,
+            quantity: take,
+            sourceType: 'SALES_RETURN',
+            sourceId: salesReturn.id,
+          });
+          await tx.salesReturnItemBatch.create({
+            data: {
+              salesReturnItemId: returnItem.id,
+              batchId: consumption.batchId,
+              quantity: take,
+            },
+          });
+          remaining -= take;
+        }
+
+        if (remaining > 0) {
+          throw new BadRequestException(
+            `Could not determine which batch to restore ${remaining} unit(s) of "${product.name}" into`,
+          );
+        }
       }
 
       const [salesReturnsAccount, gstPayableAccount, arAccount] = await Promise.all([
@@ -251,6 +343,19 @@ export class SalesService {
       branchId = (await this.branchesService.getOrCreateDefaultBranch(businessId)).id;
     }
 
+    let godownId: string;
+    if (dto.godownId) {
+      const godown = await this.prisma.godown.findFirst({
+        where: { id: dto.godownId, businessId, branchId },
+      });
+      if (!godown) {
+        throw new BadRequestException('Godown not found for this branch');
+      }
+      godownId = godown.id;
+    } else {
+      godownId = (await this.godownsService.getOrCreateDefaultGodown(businessId, branchId)).id;
+    }
+
     const productIds = dto.items.map((item) => item.productId);
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds }, businessId },
@@ -262,11 +367,6 @@ export class SalesService {
       if (!product) {
         throw new BadRequestException(
           `Product ${item.productId} not found`,
-        );
-      }
-      if (Number(product.currentStock) < item.quantity) {
-        throw new BadRequestException(
-          `Insufficient stock for "${product.name}" (available: ${product.currentStock})`,
         );
       }
     }
@@ -316,6 +416,7 @@ export class SalesService {
         data: {
           businessId,
           branchId,
+          godownId,
           customerId: dto.customerId,
           invoiceNumber,
           status,
@@ -337,13 +438,39 @@ export class SalesService {
             })),
           },
         },
-        include: { items: true, customer: true, branch: true },
+        include: { items: true, customer: true, branch: true, godown: true },
       });
 
-      for (const item of dto.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { currentStock: { decrement: item.quantity } },
+      for (const invoiceItem of invoice.items) {
+        const product = productMap.get(invoiceItem.productId)!;
+        const quantity = Number(invoiceItem.quantity);
+
+        if (!product.tracksBatches) {
+          await this.stockService.consumeSimple(tx, {
+            businessId,
+            productId: invoiceItem.productId,
+            godownId,
+            quantity,
+            sourceType: 'SALES',
+            sourceId: invoice.id,
+          });
+          continue;
+        }
+
+        const consumed = await this.stockService.consumeFefo(tx, {
+          businessId,
+          productId: invoiceItem.productId,
+          godownId,
+          quantity,
+          sourceType: 'SALES',
+          sourceId: invoice.id,
+        });
+        await tx.salesInvoiceItemBatch.createMany({
+          data: consumed.map((c) => ({
+            salesInvoiceItemId: invoiceItem.id,
+            batchId: c.batchId,
+            quantity: c.quantity,
+          })),
         });
       }
 
@@ -396,13 +523,72 @@ export class SalesService {
 
   async remove(businessId: string, id: string, actor: JwtPayload) {
     const invoice = await this.findOne(businessId, id);
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: invoice.items.map((i) => i.productId) }, businessId },
+    });
+    const productMap = new Map(products.map((p) => [p.id, p]));
 
     return this.prisma.$transaction(async (tx) => {
+      const godownId = await this.resolveInvoiceGodownId(tx, businessId, invoice);
+
       for (const item of invoice.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { currentStock: { increment: Number(item.quantity) } },
+        const product = productMap.get(item.productId)!;
+        const alreadyReturned = invoice.returns
+          .flatMap((r) => r.items)
+          .filter((ri) => ri.productId === item.productId)
+          .reduce((sum, ri) => sum + Number(ri.quantity), 0);
+        const netQuantity = Number(item.quantity) - alreadyReturned;
+        if (netQuantity <= 0) continue;
+
+        if (!product.tracksBatches) {
+          await this.stockService.receiveExisting(tx, {
+            businessId,
+            productId: item.productId,
+            godownId,
+            batchId: null,
+            quantity: netQuantity,
+            sourceType: 'ADJUSTMENT',
+            sourceId: id,
+          });
+          continue;
+        }
+
+        const originalBatchIds = item.batches.map((b) => b.batchId);
+        const priorRestorations = await tx.salesReturnItemBatch.findMany({
+          where: {
+            batchId: { in: originalBatchIds },
+            salesReturnItem: {
+              productId: item.productId,
+              salesReturn: { salesInvoiceId: id },
+            },
+          },
         });
+        const alreadyRestoredByBatch = new Map<string, number>();
+        for (const r of priorRestorations) {
+          alreadyRestoredByBatch.set(
+            r.batchId,
+            (alreadyRestoredByBatch.get(r.batchId) ?? 0) + Number(r.quantity),
+          );
+        }
+
+        let remaining = netQuantity;
+        for (const consumption of item.batches) {
+          if (remaining <= 0) break;
+          const capacity =
+            Number(consumption.quantity) - (alreadyRestoredByBatch.get(consumption.batchId) ?? 0);
+          const take = Math.min(capacity, remaining);
+          if (take <= 0) continue;
+          await this.stockService.receiveExisting(tx, {
+            businessId,
+            productId: item.productId,
+            godownId,
+            batchId: consumption.batchId,
+            quantity: take,
+            sourceType: 'ADJUSTMENT',
+            sourceId: id,
+          });
+          remaining -= take;
+        }
       }
 
       const sourceIds = [
