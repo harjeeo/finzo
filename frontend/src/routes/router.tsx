@@ -31,6 +31,15 @@ import { Quotations } from "../pages/Quotations";
 import { NewQuotation } from "../pages/NewQuotation";
 import { QuotationDetail } from "../pages/QuotationDetail";
 import { QuotationPrint } from "../pages/QuotationPrint";
+import { GstReports } from "../pages/GstReports";
+import { PurchaseOrders } from "../pages/PurchaseOrders";
+import { NewPurchaseOrder } from "../pages/NewPurchaseOrder";
+import { PurchaseOrderDetail } from "../pages/PurchaseOrderDetail";
+import { PurchaseOrderPrint } from "../pages/PurchaseOrderPrint";
+import { DeliveryChallans } from "../pages/DeliveryChallans";
+import { NewDeliveryChallan } from "../pages/NewDeliveryChallan";
+import { DeliveryChallanDetail } from "../pages/DeliveryChallanDetail";
+import { DeliveryChallanPrint } from "../pages/DeliveryChallanPrint";
 import { CustomerLedgerPage } from "../pages/CustomerLedgerPage";
 import { SupplierLedgerPage } from "../pages/SupplierLedgerPage";
 import { AdminLayout } from "../layouts/AdminLayout";
@@ -61,6 +70,8 @@ export const router = createBrowserRouter([
       { path: "sales/:id/eway-bill/print", element: <EwayBillPrint /> },
       { path: "purchase/:id/print", element: <PurchaseBillPrint /> },
       { path: "quotations/:id/print", element: <QuotationPrint /> },
+      { path: "purchase-orders/:id/print", element: <PurchaseOrderPrint /> },
+      { path: "delivery-challans/:id/print", element: <DeliveryChallanPrint /> },
       {
         path: "/",
         element: <DashboardLayout />,
@@ -74,6 +85,9 @@ export const router = createBrowserRouter([
           { path: "quotations", element: <Quotations /> },
           { path: "quotations/new", element: <NewQuotation /> },
           { path: "quotations/:id", element: <QuotationDetail /> },
+          { path: "delivery-challans", element: <DeliveryChallans /> },
+          { path: "delivery-challans/new", element: <NewDeliveryChallan /> },
+          { path: "delivery-challans/:id", element: <DeliveryChallanDetail /> },
           { path: "sales", element: <Sales /> },
           { path: "sales/new", element: <NewSalesInvoice /> },
           { path: "sales/:id", element: <SalesInvoiceDetail /> },
@@ -81,11 +95,15 @@ export const router = createBrowserRouter([
           {
             element: <RequireRole roles={["MANAGER", "ACCOUNTANT"]} />,
             children: [
+              { path: "purchase-orders", element: <PurchaseOrders /> },
+              { path: "purchase-orders/new", element: <NewPurchaseOrder /> },
+              { path: "purchase-orders/:id", element: <PurchaseOrderDetail /> },
               { path: "purchase", element: <Purchase /> },
               { path: "purchase/new", element: <NewPurchaseBill /> },
               { path: "purchase/:id", element: <PurchaseBillDetail /> },
               { path: "expenses", element: <Expenses /> },
               { path: "reports", element: <Reports /> },
+              { path: "gst-reports", element: <GstReports /> },
               { path: "accounting", element: <Accounting /> },
               { path: "stock-transfers", element: <StockTransfers /> },
               { path: "expiry-report", element: <ExpiryReport /> },

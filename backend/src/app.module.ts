@@ -22,6 +22,8 @@ import { EwayBillModule } from './eway-bill/eway-bill.module.js';
 import { GodownsModule } from './godowns/godowns.module.js';
 import { InventoryModule } from './inventory/inventory.module.js';
 import { QuotationsModule } from './quotations/quotations.module.js';
+import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module.js';
+import { DeliveryChallansModule } from './delivery-challans/delivery-challans.module.js';
 
 @Module({
   imports: [
@@ -46,6 +48,8 @@ import { QuotationsModule } from './quotations/quotations.module.js';
     GodownsModule,
     InventoryModule,
     QuotationsModule,
+    PurchaseOrdersModule,
+    DeliveryChallansModule,
   ],
   controllers: [AppController],
   providers: [AppService],

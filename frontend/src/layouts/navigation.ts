@@ -17,6 +17,8 @@ import {
   PackageMoving01Icon,
   HourglassIcon,
   Note01Icon,
+  ShoppingBasket01Icon,
+  DeliveryTruck01Icon,
 } from "hugeicons-react";
 import type { HugeiconsIconProps } from "@hugeicons/react";
 import type { ReactElement } from "react";
@@ -36,7 +38,18 @@ export const navItems: NavItem[] = [
   { label: "Suppliers", path: "/suppliers", icon: TruckDeliveryIcon },
   { label: "Products", path: "/products", icon: Package01Icon },
   { label: "Quotations", path: "/quotations", icon: Note01Icon },
+  {
+    label: "Delivery Challans",
+    path: "/delivery-challans",
+    icon: DeliveryTruck01Icon,
+  },
   { label: "Sales", path: "/sales", icon: ShoppingCart01Icon },
+  {
+    label: "Purchase Orders",
+    path: "/purchase-orders",
+    icon: ShoppingBasket01Icon,
+    roles: ["MANAGER", "ACCOUNTANT"],
+  },
   {
     label: "Purchase",
     path: "/purchase",
@@ -54,6 +67,12 @@ export const navItems: NavItem[] = [
     label: "Reports",
     path: "/reports",
     icon: Analytics01Icon,
+    roles: ["MANAGER", "ACCOUNTANT"],
+  },
+  {
+    label: "GST Reports",
+    path: "/gst-reports",
+    icon: FileSecurityIcon,
     roles: ["MANAGER", "ACCOUNTANT"],
   },
   {

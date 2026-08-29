@@ -19,5 +19,6 @@ import { PurchasesService } from './purchases.service.js';
   ],
   controllers: [PurchasesController],
   providers: [PurchasesService],
+  exports: [PurchasesService],
 })
 export class PurchasesModule {}

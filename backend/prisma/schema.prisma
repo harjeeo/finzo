@@ -35,6 +35,21 @@ enum QuotationStatus {
   CONVERTED
 }
 
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  CONFIRMED
+  CANCELLED
+  CONVERTED
+}
+
+enum DeliveryChallanStatus {
+  DRAFT
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+}
+
 enum AccountType {
   ASSET
   LIABILITY
@@ -141,6 +156,8 @@ model Business {
   stockMovements  StockMovement[]
   stockTransfers  StockTransfer[]
   quotations      Quotation[]
+  purchaseOrders  PurchaseOrder[]
+  deliveryChallans DeliveryChallan[]
 
   @@map("businesses")
 }
@@ -214,6 +231,8 @@ model Branch {
   expenses      Expense[]
   godowns       Godown[]
   quotations    Quotation[]
+  purchaseOrders PurchaseOrder[]
+  deliveryChallans DeliveryChallan[]
 
   @@index([businessId])
   @@map("branches")
@@ -356,10 +375,11 @@ model Customer {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  salesInvoices SalesInvoice[]
-  salesReturns  SalesReturn[]
-  quotations    Quotation[]
+  business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  salesInvoices    SalesInvoice[]
+  salesReturns     SalesReturn[]
+  quotations       Quotation[]
+  deliveryChallans DeliveryChallan[]
 
   @@index([businessId])
   @@map("customers")
@@ -380,6 +400,7 @@ model Supplier {
   business        Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   purchaseBills   PurchaseBill[]
   purchaseReturns PurchaseReturn[]
+  purchaseOrders  PurchaseOrder[]
 
   @@index([businessId])
   @@map("suppliers")
@@ -414,6 +435,8 @@ model Product {
   movements           StockMovement[]
   transfers           StockTransfer[]
   quotationItems      QuotationItem[]
+  purchaseOrderItems  PurchaseOrderItem[]
+  deliveryChallanItems DeliveryChallanItem[]
 
   @@index([businessId])
   @@map("products")
@@ -446,6 +469,7 @@ model SalesInvoice {
   returns    SalesReturn[]
   ewayBill   EwayBill?
   quotation  Quotation?
+  deliveryChallans DeliveryChallan[]
 
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
@@ -549,6 +573,98 @@ model QuotationItem {
   @@map("quotation_items")
 }
 
+model PurchaseOrder {
+  id             String              @id @default(cuid())
+  businessId     String
+  branchId       String?
+  supplierId     String
+  poNumber       String
+  poDate         DateTime            @default(now())
+  expectedDate   DateTime?
+  status         PurchaseOrderStatus @default(DRAFT)
+  subtotal       Decimal             @default(0) @db.Decimal(14, 2)
+  taxTotal       Decimal             @default(0) @db.Decimal(14, 2)
+  discountTotal  Decimal             @default(0) @db.Decimal(14, 2)
+  grandTotal     Decimal             @default(0) @db.Decimal(14, 2)
+  notes          String?
+  convertedBillId String?            @unique
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  business       Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch         Branch?            @relation(fields: [branchId], references: [id])
+  supplier       Supplier           @relation(fields: [supplierId], references: [id])
+  items          PurchaseOrderItem[]
+  convertedBill  PurchaseBill?      @relation(fields: [convertedBillId], references: [id])
+
+  @@unique([businessId, poNumber])
+  @@index([businessId])
+  @@index([branchId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String  @id @default(cuid())
+  purchaseOrderId String
+  productId       String
+  productName     String
+  quantity        Decimal @db.Decimal(14, 2)
+  unitPrice       Decimal @db.Decimal(14, 2)
+  gstRate         Decimal @db.Decimal(5, 2)
+  taxAmount       Decimal @db.Decimal(14, 2)
+  lineTotal       Decimal @db.Decimal(14, 2)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@map("purchase_order_items")
+}
+
+model DeliveryChallan {
+  id              String                 @id @default(cuid())
+  businessId      String
+  branchId        String?
+  customerId      String
+  salesInvoiceId  String?
+  challanNumber   String
+  challanDate     DateTime               @default(now())
+  vehicleNumber   String?
+  transporterName String?
+  status          DeliveryChallanStatus  @default(DRAFT)
+  notes           String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  business     Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch       Branch?               @relation(fields: [branchId], references: [id])
+  customer     Customer              @relation(fields: [customerId], references: [id])
+  salesInvoice SalesInvoice?         @relation(fields: [salesInvoiceId], references: [id])
+  items        DeliveryChallanItem[]
+
+  @@unique([businessId, challanNumber])
+  @@index([businessId])
+  @@index([branchId])
+  @@index([salesInvoiceId])
+  @@map("delivery_challans")
+}
+
+model DeliveryChallanItem {
+  id                String  @id @default(cuid())
+  deliveryChallanId String
+  productId         String
+  productName       String
+  quantity          Decimal @db.Decimal(14, 2)
+  unitPrice         Decimal @db.Decimal(14, 2)
+  lineTotal         Decimal @db.Decimal(14, 2)
+
+  deliveryChallan DeliveryChallan @relation(fields: [deliveryChallanId], references: [id], onDelete: Cascade)
+  product         Product         @relation(fields: [productId], references: [id])
+
+  @@index([deliveryChallanId])
+  @@map("delivery_challan_items")
+}
+
 model SalesReturn {
   id             String   @id @default(cuid())
   businessId     String
@@ -625,9 +741,10 @@ model PurchaseBill {
   branch   Branch?            @relation(fields: [branchId], references: [id])
   godown   Godown?            @relation(fields: [godownId], references: [id])
   supplier Supplier           @relation(fields: [supplierId], references: [id])
-  items    PurchaseBillItem[]
-  payments PurchasePayment[]
-  returns  PurchaseReturn[]
+  items         PurchaseBillItem[]
+  payments      PurchasePayment[]
+  returns       PurchaseReturn[]
+  purchaseOrder PurchaseOrder?
 
   @@unique([businessId, billNumber])
   @@index([businessId])
