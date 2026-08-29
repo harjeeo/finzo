@@ -27,6 +27,10 @@ import { AuditLog } from "../pages/AuditLog";
 import { Godowns } from "../pages/Godowns";
 import { StockTransfers } from "../pages/StockTransfers";
 import { ExpiryReport } from "../pages/ExpiryReport";
+import { Quotations } from "../pages/Quotations";
+import { NewQuotation } from "../pages/NewQuotation";
+import { QuotationDetail } from "../pages/QuotationDetail";
+import { QuotationPrint } from "../pages/QuotationPrint";
 import { CustomerLedgerPage } from "../pages/CustomerLedgerPage";
 import { SupplierLedgerPage } from "../pages/SupplierLedgerPage";
 import { AdminLayout } from "../layouts/AdminLayout";
@@ -56,6 +60,7 @@ export const router = createBrowserRouter([
       { path: "sales/:id/print", element: <SalesInvoicePrint /> },
       { path: "sales/:id/eway-bill/print", element: <EwayBillPrint /> },
       { path: "purchase/:id/print", element: <PurchaseBillPrint /> },
+      { path: "quotations/:id/print", element: <QuotationPrint /> },
       {
         path: "/",
         element: <DashboardLayout />,
@@ -66,6 +71,9 @@ export const router = createBrowserRouter([
           { path: "suppliers", element: <Suppliers /> },
           { path: "suppliers/:id", element: <SupplierLedgerPage /> },
           { path: "products", element: <Products /> },
+          { path: "quotations", element: <Quotations /> },
+          { path: "quotations/new", element: <NewQuotation /> },
+          { path: "quotations/:id", element: <QuotationDetail /> },
           { path: "sales", element: <Sales /> },
           { path: "sales/new", element: <NewSalesInvoice /> },
           { path: "sales/:id", element: <SalesInvoiceDetail /> },

@@ -19,5 +19,6 @@ import { SalesService } from './sales.service.js';
   ],
   controllers: [SalesController],
   providers: [SalesService],
+  exports: [SalesService],
 })
 export class SalesModule {}

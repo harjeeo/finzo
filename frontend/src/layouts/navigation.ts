@@ -16,6 +16,7 @@ import {
   WarehouseIcon,
   PackageMoving01Icon,
   HourglassIcon,
+  Note01Icon,
 } from "hugeicons-react";
 import type { HugeiconsIconProps } from "@hugeicons/react";
 import type { ReactElement } from "react";
@@ -34,6 +35,7 @@ export const navItems: NavItem[] = [
   { label: "Customers", path: "/customers", icon: UserGroupIcon },
   { label: "Suppliers", path: "/suppliers", icon: TruckDeliveryIcon },
   { label: "Products", path: "/products", icon: Package01Icon },
+  { label: "Quotations", path: "/quotations", icon: Note01Icon },
   { label: "Sales", path: "/sales", icon: ShoppingCart01Icon },
   {
     label: "Purchase",

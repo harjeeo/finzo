@@ -21,6 +21,7 @@ import { AuditModule } from './audit/audit.module.js';
 import { EwayBillModule } from './eway-bill/eway-bill.module.js';
 import { GodownsModule } from './godowns/godowns.module.js';
 import { InventoryModule } from './inventory/inventory.module.js';
+import { QuotationsModule } from './quotations/quotations.module.js';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { InventoryModule } from './inventory/inventory.module.js';
     EwayBillModule,
     GodownsModule,
     InventoryModule,
+    QuotationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

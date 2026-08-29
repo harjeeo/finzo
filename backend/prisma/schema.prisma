@@ -26,6 +26,15 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CONVERTED
+}
+
 enum AccountType {
   ASSET
   LIABILITY
@@ -131,6 +140,7 @@ model Business {
   productStocks   ProductStock[]
   stockMovements  StockMovement[]
   stockTransfers  StockTransfer[]
+  quotations      Quotation[]
 
   @@map("businesses")
 }
@@ -203,6 +213,7 @@ model Branch {
   purchaseBills PurchaseBill[]
   expenses      Expense[]
   godowns       Godown[]
+  quotations    Quotation[]
 
   @@index([businessId])
   @@map("branches")
@@ -348,6 +359,7 @@ model Customer {
   business      Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
   salesInvoices SalesInvoice[]
   salesReturns  SalesReturn[]
+  quotations    Quotation[]
 
   @@index([businessId])
   @@map("customers")
@@ -401,6 +413,7 @@ model Product {
   stocks              ProductStock[]
   movements           StockMovement[]
   transfers           StockTransfer[]
+  quotationItems      QuotationItem[]
 
   @@index([businessId])
   @@map("products")
@@ -428,10 +441,11 @@ model SalesInvoice {
   branch   Branch?            @relation(fields: [branchId], references: [id])
   godown   Godown?            @relation(fields: [godownId], references: [id])
   customer Customer           @relation(fields: [customerId], references: [id])
-  items    SalesInvoiceItem[]
-  payments SalesPayment[]
-  returns  SalesReturn[]
-  ewayBill EwayBill?
+  items      SalesInvoiceItem[]
+  payments   SalesPayment[]
+  returns    SalesReturn[]
+  ewayBill   EwayBill?
+  quotation  Quotation?
 
   @@unique([businessId, invoiceNumber])
   @@index([businessId])
@@ -485,6 +499,54 @@ model SalesInvoiceItemBatch {
 
   @@index([salesInvoiceItemId])
   @@map("sales_invoice_item_batches")
+}
+
+model Quotation {
+  id                String          @id @default(cuid())
+  businessId        String
+  branchId          String?
+  customerId        String
+  quotationNumber   String
+  quotationDate     DateTime        @default(now())
+  validUntil        DateTime?
+  status            QuotationStatus @default(DRAFT)
+  subtotal          Decimal         @default(0) @db.Decimal(14, 2)
+  taxTotal          Decimal         @default(0) @db.Decimal(14, 2)
+  discountTotal     Decimal         @default(0) @db.Decimal(14, 2)
+  grandTotal        Decimal         @default(0) @db.Decimal(14, 2)
+  notes             String?
+  convertedInvoiceId String?        @unique
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  business         Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  branch           Branch?          @relation(fields: [branchId], references: [id])
+  customer         Customer         @relation(fields: [customerId], references: [id])
+  items            QuotationItem[]
+  convertedInvoice SalesInvoice?    @relation(fields: [convertedInvoiceId], references: [id])
+
+  @@unique([businessId, quotationNumber])
+  @@index([businessId])
+  @@index([branchId])
+  @@map("quotations")
+}
+
+model QuotationItem {
+  id            String  @id @default(cuid())
+  quotationId   String
+  productId     String
+  productName   String
+  quantity      Decimal @db.Decimal(14, 2)
+  unitPrice     Decimal @db.Decimal(14, 2)
+  gstRate       Decimal @db.Decimal(5, 2)
+  taxAmount     Decimal @db.Decimal(14, 2)
+  lineTotal     Decimal @db.Decimal(14, 2)
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id])
+
+  @@index([quotationId])
+  @@map("quotation_items")
 }
 
 model SalesReturn {
