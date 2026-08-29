@@ -30,4 +30,8 @@ export class CreateCustomerDto {
   @IsNumber()
   @Min(0)
   creditLimit?: number;
+
+  @IsOptional()
+  @IsString()
+  priceListId?: string;
 }

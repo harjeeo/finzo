@@ -7,6 +7,7 @@ export interface SalesInvoiceItem {
   productName: string;
   quantity: string;
   unitPrice: string;
+  unit: string;
   gstRate: string;
   taxAmount: string;
   lineTotal: string;
@@ -74,6 +75,7 @@ export interface SalesInvoiceItemInput {
   productId: string;
   quantity: number;
   unitPrice?: number;
+  unit?: string;
 }
 
 export interface SalesInvoiceInput {

@@ -15,6 +15,7 @@ export class CustomersService {
   findAll(businessId: string) {
     return this.prisma.customer.findMany({
       where: { businessId },
+      include: { priceList: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -22,6 +23,7 @@ export class CustomersService {
   async findOne(businessId: string, id: string) {
     const customer = await this.prisma.customer.findFirst({
       where: { id, businessId },
+      include: { priceList: true },
     });
     if (!customer) {
       throw new NotFoundException('Customer not found');
@@ -31,7 +33,7 @@ export class CustomersService {
 
   async create(businessId: string, dto: CreateCustomerDto, actor: JwtPayload) {
     const customer = await this.prisma.customer.create({
-      data: { ...dto, businessId },
+      data: { ...dto, priceListId: dto.priceListId || null, businessId },
     });
     await this.auditService.log({
       businessId,
@@ -55,7 +57,10 @@ export class CustomersService {
     const before = await this.findOne(businessId, id);
     const after = await this.prisma.customer.update({
       where: { id },
-      data: dto,
+      data: {
+        ...dto,
+        ...(dto.priceListId !== undefined ? { priceListId: dto.priceListId || null } : {}),
+      },
     });
     await this.auditService.log({
       businessId,

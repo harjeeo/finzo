@@ -196,7 +196,9 @@ export function SalesInvoiceDetail() {
                 <td className="px-4 py-3 font-medium text-gray-900">
                   {item.productName}
                 </td>
-                <td className="px-4 py-3 text-gray-600">{item.quantity}</td>
+                <td className="px-4 py-3 text-gray-600">
+                  {item.quantity} {item.unit}
+                </td>
                 <td className="px-4 py-3 text-gray-600">₹{item.unitPrice}</td>
                 <td className="px-4 py-3 text-gray-600">{item.gstRate}%</td>
                 <td className="px-4 py-3 font-medium text-gray-900">

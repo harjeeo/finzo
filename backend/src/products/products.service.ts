@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { BranchesService } from '../branches/branches.service.js';
@@ -7,6 +7,8 @@ import { StockService } from '../inventory/stock.service.js';
 import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { CreateProductDto } from './dto/create-product.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
+import { CreateProductUnitDto } from './dto/create-product-unit.dto.js';
+import { UpdateProductUnitDto } from './dto/update-product-unit.dto.js';
 
 @Injectable()
 export class ProductsService {
@@ -21,6 +23,7 @@ export class ProductsService {
   findAll(businessId: string) {
     return this.prisma.product.findMany({
       where: { businessId },
+      include: { units: true },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -28,11 +31,66 @@ export class ProductsService {
   async findOne(businessId: string, id: string) {
     const product = await this.prisma.product.findFirst({
       where: { id, businessId },
+      include: { units: true },
     });
     if (!product) {
       throw new NotFoundException('Product not found');
     }
     return product;
+  }
+
+  async listUnits(businessId: string, productId: string) {
+    await this.findOne(businessId, productId);
+    return this.prisma.productUnit.findMany({
+      where: { productId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async createUnit(businessId: string, productId: string, dto: CreateProductUnitDto) {
+    const product = await this.findOne(businessId, productId);
+    if (dto.name.trim().toLowerCase() === product.unit.trim().toLowerCase()) {
+      throw new BadRequestException(
+        `"${dto.name}" is already this product's base unit`,
+      );
+    }
+    const existing = await this.prisma.productUnit.findFirst({
+      where: { productId, name: dto.name },
+    });
+    if (existing) {
+      throw new BadRequestException('A unit with this name already exists for this product');
+    }
+    return this.prisma.productUnit.create({
+      data: { productId, name: dto.name, conversionFactor: dto.conversionFactor },
+    });
+  }
+
+  async updateUnit(
+    businessId: string,
+    productId: string,
+    unitId: string,
+    dto: UpdateProductUnitDto,
+  ) {
+    await this.findOne(businessId, productId);
+    const unit = await this.prisma.productUnit.findFirst({
+      where: { id: unitId, productId },
+    });
+    if (!unit) {
+      throw new NotFoundException('Unit not found');
+    }
+    return this.prisma.productUnit.update({ where: { id: unitId }, data: dto });
+  }
+
+  async removeUnit(businessId: string, productId: string, unitId: string) {
+    await this.findOne(businessId, productId);
+    const unit = await this.prisma.productUnit.findFirst({
+      where: { id: unitId, productId },
+    });
+    if (!unit) {
+      throw new NotFoundException('Unit not found');
+    }
+    await this.prisma.productUnit.delete({ where: { id: unitId } });
+    return { success: true };
   }
 
   async create(businessId: string, dto: CreateProductDto, actor: JwtPayload) {

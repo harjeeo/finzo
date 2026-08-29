@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export type AccountTypeValue = 'ASSET' | 'LIABILITY' | 'EQUITY' | 'INCOME' | 'EXPENSE';
 
@@ -21,4 +21,8 @@ export class CreateAccountDto {
 
   @IsEnum(ACCOUNT_TYPES)
   type: AccountTypeValue;
+
+  @IsOptional()
+  @IsBoolean()
+  isBankAccount?: boolean;
 }

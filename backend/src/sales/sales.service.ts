@@ -16,6 +16,7 @@ import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { CreateSalesInvoiceDto } from './dto/create-sales-invoice.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
 import { CreateSalesReturnDto } from './dto/create-sales-return.dto.js';
+import { resolveUnitConversion } from '../products/unit-conversion.util.js';
 
 @Injectable()
 export class SalesService {
@@ -167,7 +168,9 @@ export class SalesService {
 
       for (const returnItem of salesReturn.items) {
         const product = productMap.get(returnItem.productId)!;
-        const quantity = Number(returnItem.quantity);
+        const invoiceItemForUnit = invoiceItemMap.get(returnItem.productId)!;
+        const quantity =
+          Number(returnItem.quantity) * Number(invoiceItemForUnit.unitConversionFactor);
 
         if (!product.tracksBatches) {
           await this.stockService.receiveExisting(tx, {
@@ -371,6 +374,10 @@ export class SalesService {
       }
     }
 
+    const productUnits = await this.prisma.productUnit.findMany({
+      where: { productId: { in: productIds } },
+    });
+
     const lineItems = dto.items.map((item) => {
       const product = productMap.get(item.productId)!;
       const unitPrice = item.unitPrice ?? Number(product.sellingPrice);
@@ -378,12 +385,23 @@ export class SalesService {
       const lineSubtotal = unitPrice * item.quantity;
       const taxAmount = Math.round(lineSubtotal * (gstRate / 100) * 100) / 100;
       const lineTotal = lineSubtotal + taxAmount;
+      const { unit, conversionFactor } = resolveUnitConversion(
+        {
+          productId: product.id,
+          productName: product.name,
+          baseUnit: product.unit,
+          requestedUnit: item.unit,
+        },
+        productUnits,
+      );
 
       return {
         productId: product.id,
         productName: product.name,
         quantity: item.quantity,
         unitPrice,
+        unit,
+        unitConversionFactor: conversionFactor,
         gstRate,
         taxAmount,
         lineTotal,
@@ -432,6 +450,8 @@ export class SalesService {
               productName: li.productName,
               quantity: li.quantity,
               unitPrice: li.unitPrice,
+              unit: li.unit,
+              unitConversionFactor: li.unitConversionFactor,
               gstRate: li.gstRate,
               taxAmount: li.taxAmount,
               lineTotal: li.lineTotal,
@@ -443,7 +463,7 @@ export class SalesService {
 
       for (const invoiceItem of invoice.items) {
         const product = productMap.get(invoiceItem.productId)!;
-        const quantity = Number(invoiceItem.quantity);
+        const quantity = Number(invoiceItem.quantity) * Number(invoiceItem.unitConversionFactor);
 
         if (!product.tracksBatches) {
           await this.stockService.consumeSimple(tx, {
@@ -539,6 +559,7 @@ export class SalesService {
           .reduce((sum, ri) => sum + Number(ri.quantity), 0);
         const netQuantity = Number(item.quantity) - alreadyReturned;
         if (netQuantity <= 0) continue;
+        const netBaseQuantity = netQuantity * Number(item.unitConversionFactor);
 
         if (!product.tracksBatches) {
           await this.stockService.receiveExisting(tx, {
@@ -546,7 +567,7 @@ export class SalesService {
             productId: item.productId,
             godownId,
             batchId: null,
-            quantity: netQuantity,
+            quantity: netBaseQuantity,
             sourceType: 'ADJUSTMENT',
             sourceId: id,
           });
@@ -571,7 +592,7 @@ export class SalesService {
           );
         }
 
-        let remaining = netQuantity;
+        let remaining = netBaseQuantity;
         for (const consumption of item.batches) {
           if (remaining <= 0) break;
           const capacity =

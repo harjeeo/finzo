@@ -22,6 +22,10 @@ export class SalesInvoiceItemInputDto {
   @IsNumber()
   @Min(0)
   unitPrice?: number;
+
+  @IsOptional()
+  @IsString()
+  unit?: string;
 }
 
 export class CreateSalesInvoiceDto {

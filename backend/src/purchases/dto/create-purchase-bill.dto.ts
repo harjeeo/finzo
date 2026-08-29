@@ -26,6 +26,10 @@ export class PurchaseBillItemInputDto {
 
   @IsOptional()
   @IsString()
+  unit?: string;
+
+  @IsOptional()
+  @IsString()
   batchNumber?: string;
 
   @IsOptional()

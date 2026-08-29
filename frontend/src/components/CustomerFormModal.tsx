@@ -1,6 +1,8 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Cancel01Icon } from "hugeicons-react";
 import type { Customer, CustomerInput } from "../lib/customers-api";
+import { useAuth } from "../lib/auth-context";
+import { listPriceLists, type PriceList } from "../lib/price-lists-api";
 
 interface CustomerFormModalProps {
   customer: Customer | null;
@@ -13,6 +15,7 @@ export function CustomerFormModal({
   onClose,
   onSubmit,
 }: CustomerFormModalProps) {
+  const { accessToken } = useAuth();
   const [name, setName] = useState(customer?.name ?? "");
   const [phone, setPhone] = useState(customer?.phone ?? "");
   const [email, setEmail] = useState(customer?.email ?? "");
@@ -21,8 +24,15 @@ export function CustomerFormModal({
   const [openingBalance, setOpeningBalance] = useState(
     customer?.openingBalance ?? "0",
   );
+  const [priceListId, setPriceListId] = useState(customer?.priceListId ?? "");
+  const [priceLists, setPriceLists] = useState<PriceList[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!accessToken) return;
+    listPriceLists(accessToken).then(setPriceLists);
+  }, [accessToken]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -36,6 +46,7 @@ export function CustomerFormModal({
         gstin: gstin || undefined,
         address: address || undefined,
         openingBalance: openingBalance ? Number(openingBalance) : undefined,
+        priceListId,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -119,6 +130,24 @@ export function CustomerFormModal({
                 className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">
+              Price List
+            </label>
+            <select
+              value={priceListId}
+              onChange={(e) => setPriceListId(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+            >
+              <option value="">Default pricing</option>
+              {priceLists.map((pl) => (
+                <option key={pl.id} value={pl.id}>
+                  {pl.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

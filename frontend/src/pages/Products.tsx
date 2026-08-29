@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Add01Icon, Delete02Icon, PencilEdit01Icon } from "hugeicons-react";
+import { Add01Icon, Delete02Icon, PencilEdit01Icon, RulerIcon } from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
 import { canManageCatalog, hasRole } from "../lib/permissions";
 import {
@@ -11,6 +11,7 @@ import {
   type ProductInput,
 } from "../lib/products-api";
 import { ProductFormModal } from "../components/ProductFormModal";
+import { ProductUnitsModal } from "../components/ProductUnitsModal";
 
 export function Products() {
   const { accessToken, user } = useAuth();
@@ -21,6 +22,7 @@ export function Products() {
   const [modalState, setModalState] = useState<
     { mode: "create" } | { mode: "edit"; product: Product } | null
   >(null);
+  const [unitsProduct, setUnitsProduct] = useState<Product | null>(null);
 
   const loadProducts = async () => {
     if (!accessToken) return;
@@ -133,6 +135,14 @@ export function Products() {
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
                           <button
+                            onClick={() => setUnitsProduct(product)}
+                            className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                            aria-label="Units"
+                            title="Manage units"
+                          >
+                            <RulerIcon size={16} />
+                          </button>
+                          <button
                             onClick={() =>
                               setModalState({ mode: "edit", product })
                             }
@@ -164,6 +174,16 @@ export function Products() {
           product={modalState.mode === "edit" ? modalState.product : null}
           onClose={() => setModalState(null)}
           onSubmit={handleSubmit}
+        />
+      )}
+
+      {unitsProduct && (
+        <ProductUnitsModal
+          product={unitsProduct}
+          onClose={() => {
+            setUnitsProduct(null);
+            loadProducts();
+          }}
         />
       )}
     </div>

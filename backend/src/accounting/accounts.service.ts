@@ -80,6 +80,7 @@ export class AccountsService {
         name: a.name,
         type: a.type,
         isSystem: true,
+        isBankAccount: a.code === 'CASH' || a.code === 'BANK',
       })),
       skipDuplicates: true,
     });

@@ -1,5 +1,12 @@
 import { apiFetch } from "./api";
 
+export interface ProductUnit {
+  id: string;
+  productId: string;
+  name: string;
+  conversionFactor: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -16,6 +23,7 @@ export interface Product {
   minStockLevel: string;
   tracksBatches: boolean;
   createdAt: string;
+  units?: ProductUnit[];
 }
 
 export interface ProductInput {
@@ -51,6 +59,29 @@ export function updateProduct(token: string, id: string, input: ProductInput) {
 
 export function deleteProduct(token: string, id: string) {
   return apiFetch<{ success: boolean }>(`/products/${id}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export function listProductUnits(token: string, productId: string) {
+  return apiFetch<ProductUnit[]>(`/products/${productId}/units`, { token });
+}
+
+export function createProductUnit(
+  token: string,
+  productId: string,
+  input: { name: string; conversionFactor: number },
+) {
+  return apiFetch<ProductUnit>(`/products/${productId}/units`, {
+    method: "POST",
+    body: input,
+    token,
+  });
+}
+
+export function deleteProductUnit(token: string, productId: string, unitId: string) {
+  return apiFetch<{ success: boolean }>(`/products/${productId}/units/${unitId}`, {
     method: "DELETE",
     token,
   });

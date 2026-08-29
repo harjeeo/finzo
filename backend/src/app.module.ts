@@ -24,6 +24,9 @@ import { InventoryModule } from './inventory/inventory.module.js';
 import { QuotationsModule } from './quotations/quotations.module.js';
 import { PurchaseOrdersModule } from './purchase-orders/purchase-orders.module.js';
 import { DeliveryChallansModule } from './delivery-challans/delivery-challans.module.js';
+import { PriceListsModule } from './price-lists/price-lists.module.js';
+import { DiscountSchemesModule } from './discount-schemes/discount-schemes.module.js';
+import { PricingModule } from './pricing/pricing.module.js';
 
 @Module({
   imports: [
@@ -50,6 +53,9 @@ import { DeliveryChallansModule } from './delivery-challans/delivery-challans.mo
     QuotationsModule,
     PurchaseOrdersModule,
     DeliveryChallansModule,
+    PriceListsModule,
+    DiscountSchemesModule,
+    PricingModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -8,6 +8,7 @@ export interface Account {
   name: string;
   type: AccountType;
   isSystem: boolean;
+  isBankAccount: boolean;
   openingBalance: string;
 }
 
@@ -15,6 +16,7 @@ export interface AccountInput {
   code: string;
   name: string;
   type: AccountType;
+  isBankAccount?: boolean;
 }
 
 export interface JournalLine {

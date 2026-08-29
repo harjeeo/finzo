@@ -7,6 +7,7 @@ export interface PurchaseBillItem {
   productName: string;
   quantity: string;
   unitPrice: string;
+  unit: string;
   gstRate: string;
   taxAmount: string;
   lineTotal: string;
@@ -73,6 +74,7 @@ export interface PurchaseBillItemInput {
   productId: string;
   quantity: number;
   unitPrice?: number;
+  unit?: string;
   batchNumber?: string;
   manufactureDate?: string;
   expiryDate?: string;

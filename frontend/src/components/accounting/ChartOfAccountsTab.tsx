@@ -35,6 +35,7 @@ export function ChartOfAccountsTab({ accounts, onChanged }: Props) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [type, setType] = useState<AccountType>("EXPENSE");
+  const [isBankAccount, setIsBankAccount] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -44,11 +45,12 @@ export function ChartOfAccountsTab({ accounts, onChanged }: Props) {
     setError(null);
     setIsSubmitting(true);
     try {
-      await createAccount(accessToken, { code, name, type });
+      await createAccount(accessToken, { code, name, type, isBankAccount });
       setShowModal(false);
       setCode("");
       setName("");
       setType("EXPENSE");
+      setIsBankAccount(false);
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create account");
@@ -101,6 +103,11 @@ export function ChartOfAccountsTab({ accounts, onChanged }: Props) {
                   {account.isSystem && (
                     <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
                       System
+                    </span>
+                  )}
+                  {account.isBankAccount && (
+                    <span className="ml-2 rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600">
+                      Bank
                     </span>
                   )}
                 </td>
@@ -176,6 +183,16 @@ export function ChartOfAccountsTab({ accounts, onChanged }: Props) {
                   ))}
                 </select>
               </div>
+
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={isBankAccount}
+                  onChange={(e) => setIsBankAccount(e.target.checked)}
+                  className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                Mark as a bank/cash account (enables reconciliation)
+              </label>
 
               {error && <p className="text-sm text-red-600">{error}</p>}
 

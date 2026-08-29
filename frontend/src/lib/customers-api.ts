@@ -9,6 +9,8 @@ export interface Customer {
   address: string | null;
   openingBalance: string;
   creditLimit: string | null;
+  priceListId: string | null;
+  priceList?: { id: string; name: string } | null;
   createdAt: string;
 }
 
@@ -20,6 +22,7 @@ export interface CustomerInput {
   address?: string;
   openingBalance?: number;
   creditLimit?: number;
+  priceListId?: string;
 }
 
 export function listCustomers(token: string) {

@@ -40,6 +40,9 @@ import { DeliveryChallans } from "../pages/DeliveryChallans";
 import { NewDeliveryChallan } from "../pages/NewDeliveryChallan";
 import { DeliveryChallanDetail } from "../pages/DeliveryChallanDetail";
 import { DeliveryChallanPrint } from "../pages/DeliveryChallanPrint";
+import { BankReconciliation } from "../pages/BankReconciliation";
+import { PriceLists } from "../pages/PriceLists";
+import { DiscountSchemes } from "../pages/DiscountSchemes";
 import { CustomerLedgerPage } from "../pages/CustomerLedgerPage";
 import { SupplierLedgerPage } from "../pages/SupplierLedgerPage";
 import { AdminLayout } from "../layouts/AdminLayout";
@@ -105,6 +108,9 @@ export const router = createBrowserRouter([
               { path: "reports", element: <Reports /> },
               { path: "gst-reports", element: <GstReports /> },
               { path: "accounting", element: <Accounting /> },
+              { path: "bank-reconciliation", element: <BankReconciliation /> },
+              { path: "price-lists", element: <PriceLists /> },
+              { path: "discount-schemes", element: <DiscountSchemes /> },
               { path: "stock-transfers", element: <StockTransfers /> },
               { path: "expiry-report", element: <ExpiryReport /> },
             ],

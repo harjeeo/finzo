@@ -7,11 +7,13 @@ import { listProducts, type Product } from "../lib/products-api";
 import { createSalesInvoice } from "../lib/sales-api";
 import { listBranches, type Branch } from "../lib/branches-api";
 import { listGodowns, type Godown } from "../lib/godowns-api";
+import { resolvePricing } from "../lib/pricing-api";
 
 interface LineItem {
   productId: string;
   quantity: string;
   unitPrice: string;
+  unit: string;
 }
 
 export function NewSalesInvoice() {
@@ -26,10 +28,11 @@ export function NewSalesInvoice() {
   const [branchId, setBranchId] = useState("");
   const [godownId, setGodownId] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { productId: "", quantity: "1", unitPrice: "" },
+    { productId: "", quantity: "1", unitPrice: "", unit: "" },
   ]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [priceNotes, setPriceNotes] = useState<Record<number, string>>({});
 
   useEffect(() => {
     if (!accessToken) return;
@@ -59,18 +62,31 @@ export function NewSalesInvoice() {
     );
   };
 
-  const handleProductChange = (index: number, productId: string) => {
+  const handleProductChange = async (index: number, productId: string) => {
     const product = productMap.get(productId);
     updateLine(index, {
       productId,
       unitPrice: product ? product.sellingPrice : "",
+      unit: product ? product.unit : "",
     });
+    setPriceNotes((prev) => ({ ...prev, [index]: "" }));
+    if (!accessToken || !product) return;
+    try {
+      const resolved = await resolvePricing(accessToken, productId, customerId || undefined);
+      updateLine(index, { unitPrice: String(resolved.finalUnitPrice) });
+      const notes: string[] = [];
+      if (resolved.source === "price_list") notes.push("price list rate");
+      if (resolved.discountScheme) notes.push(`${resolved.discountScheme.name} discount applied`);
+      setPriceNotes((prev) => ({ ...prev, [index]: notes.join(" · ") }));
+    } catch {
+      // fall back silently to the product's default selling price
+    }
   };
 
   const addLine = () => {
     setLineItems((prev) => [
       ...prev,
-      { productId: "", quantity: "1", unitPrice: "" },
+      { productId: "", quantity: "1", unitPrice: "", unit: "" },
     ]);
   };
 
@@ -130,6 +146,7 @@ export function NewSalesInvoice() {
           productId: line.productId,
           quantity: Number(line.quantity),
           unitPrice: line.unitPrice ? Number(line.unitPrice) : undefined,
+          unit: line.unit || undefined,
         })),
       });
       navigate(`/sales/${invoice.id}`);
@@ -219,7 +236,8 @@ export function NewSalesInvoice() {
 
           <div className="space-y-2">
             {lineItems.map((line, index) => (
-              <div key={index} className="flex items-center gap-2">
+              <div key={index}>
+              <div className="flex items-center gap-2">
                 <select
                   value={line.productId}
                   onChange={(e) => handleProductChange(index, e.target.value)}
@@ -243,6 +261,26 @@ export function NewSalesInvoice() {
                   placeholder="Qty"
                   className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                 />
+                {(productMap.get(line.productId)?.units?.length ?? 0) > 0 ? (
+                  <select
+                    value={line.unit}
+                    onChange={(e) => updateLine(index, { unit: e.target.value })}
+                    className="w-24 rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                  >
+                    <option value={productMap.get(line.productId)?.unit}>
+                      {productMap.get(line.productId)?.unit}
+                    </option>
+                    {productMap.get(line.productId)?.units?.map((u) => (
+                      <option key={u.id} value={u.name}>
+                        {u.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="w-24 text-center text-sm text-gray-500">
+                    {productMap.get(line.productId)?.unit ?? ""}
+                  </span>
+                )}
                 <input
                   type="number"
                   min="0"
@@ -265,6 +303,10 @@ export function NewSalesInvoice() {
                 >
                   <Delete02Icon size={16} />
                 </button>
+              </div>
+              {priceNotes[index] && (
+                <p className="mt-1 pl-1 text-xs text-purple-600">{priceNotes[index]}</p>
+              )}
               </div>
             ))}
           </div>

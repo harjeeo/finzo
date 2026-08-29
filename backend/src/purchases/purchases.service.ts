@@ -16,6 +16,7 @@ import type { JwtPayload } from '../auth/types/jwt-payload.type.js';
 import { CreatePurchaseBillDto } from './dto/create-purchase-bill.dto.js';
 import { CreatePaymentDto } from './dto/create-payment.dto.js';
 import { CreatePurchaseReturnDto } from './dto/create-purchase-return.dto.js';
+import { resolveUnitConversion } from '../products/unit-conversion.util.js';
 
 @Injectable()
 export class PurchasesService {
@@ -99,7 +100,9 @@ export class PurchasesService {
       const product = await this.prisma.product.findUniqueOrThrow({
         where: { id: item.productId },
       });
-      if (Number(product.currentStock) < item.quantity) {
+      const billItem = billItemMap.get(item.productId)!;
+      const baseQuantity = item.quantity * Number(billItem.unitConversionFactor);
+      if (Number(product.currentStock) < baseQuantity) {
         throw new BadRequestException(
           `Insufficient stock for "${product.name}" to return (available: ${product.currentStock})`,
         );
@@ -180,7 +183,7 @@ export class PurchasesService {
           productId: item.productId,
           godownId: returnGodownId,
           batchId,
-          quantity: item.quantity,
+          quantity: item.quantity * Number(billItem.unitConversionFactor),
           sourceType: 'PURCHASE_RETURN',
           sourceId: id,
         });
@@ -334,6 +337,10 @@ export class PurchasesService {
       }
     }
 
+    const productUnits = await this.prisma.productUnit.findMany({
+      where: { productId: { in: productIds } },
+    });
+
     const lineItems = dto.items.map((item) => {
       const product = productMap.get(item.productId)!;
       const unitPrice = item.unitPrice ?? Number(product.purchasePrice);
@@ -341,12 +348,23 @@ export class PurchasesService {
       const lineSubtotal = unitPrice * item.quantity;
       const taxAmount = Math.round(lineSubtotal * (gstRate / 100) * 100) / 100;
       const lineTotal = lineSubtotal + taxAmount;
+      const { unit, conversionFactor } = resolveUnitConversion(
+        {
+          productId: product.id,
+          productName: product.name,
+          baseUnit: product.unit,
+          requestedUnit: item.unit,
+        },
+        productUnits,
+      );
 
       return {
         productId: product.id,
         productName: product.name,
         quantity: item.quantity,
         unitPrice,
+        unit,
+        unitConversionFactor: conversionFactor,
         gstRate,
         taxAmount,
         lineTotal,
@@ -386,6 +404,8 @@ export class PurchasesService {
               productName: li.productName,
               quantity: li.quantity,
               unitPrice: li.unitPrice,
+              unit: li.unit,
+              unitConversionFactor: li.unitConversionFactor,
               gstRate: li.gstRate,
               taxAmount: li.taxAmount,
               lineTotal: li.lineTotal,
@@ -398,12 +418,12 @@ export class PurchasesService {
         include: { items: true, supplier: true, branch: true, godown: true },
       });
 
-      for (const item of dto.items) {
+      for (const item of lineItems) {
         await this.stockService.receive(tx, {
           businessId,
           productId: item.productId,
           godownId,
-          quantity: item.quantity,
+          quantity: item.quantity * item.unitConversionFactor,
           batchInfo: item.batchNumber
             ? {
                 batchNumber: item.batchNumber,
@@ -479,7 +499,7 @@ export class PurchasesService {
           productId: item.productId,
           godownId,
           batchId,
-          quantity: Number(item.quantity),
+          quantity: Number(item.quantity) * Number(item.unitConversionFactor),
           sourceType: 'ADJUSTMENT',
           sourceId: id,
         });

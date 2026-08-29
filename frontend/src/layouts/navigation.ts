@@ -19,6 +19,9 @@ import {
   Note01Icon,
   ShoppingBasket01Icon,
   DeliveryTruck01Icon,
+  BankIcon,
+  SaleTag01Icon,
+  DiscountTag01Icon,
 } from "hugeicons-react";
 import type { HugeiconsIconProps } from "@hugeicons/react";
 import type { ReactElement } from "react";
@@ -79,6 +82,24 @@ export const navItems: NavItem[] = [
     label: "Accounting",
     path: "/accounting",
     icon: Calculator01Icon,
+    roles: ["MANAGER", "ACCOUNTANT"],
+  },
+  {
+    label: "Bank Reconciliation",
+    path: "/bank-reconciliation",
+    icon: BankIcon,
+    roles: ["MANAGER", "ACCOUNTANT"],
+  },
+  {
+    label: "Price Lists",
+    path: "/price-lists",
+    icon: SaleTag01Icon,
+    roles: ["MANAGER", "ACCOUNTANT"],
+  },
+  {
+    label: "Discount Schemes",
+    path: "/discount-schemes",
+    icon: DiscountTag01Icon,
     roles: ["MANAGER", "ACCOUNTANT"],
   },
   {

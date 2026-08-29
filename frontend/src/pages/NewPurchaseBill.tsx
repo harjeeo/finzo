@@ -12,6 +12,7 @@ interface LineItem {
   productId: string;
   quantity: string;
   unitPrice: string;
+  unit: string;
   batchNumber: string;
   expiryDate: string;
 }
@@ -28,7 +29,7 @@ export function NewPurchaseBill() {
   const [branchId, setBranchId] = useState("");
   const [godownId, setGodownId] = useState("");
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { productId: "", quantity: "1", unitPrice: "", batchNumber: "", expiryDate: "" },
+    { productId: "", quantity: "1", unitPrice: "", unit: "", batchNumber: "", expiryDate: "" },
   ]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,13 +67,14 @@ export function NewPurchaseBill() {
     updateLine(index, {
       productId,
       unitPrice: product ? product.purchasePrice : "",
+      unit: product ? product.unit : "",
     });
   };
 
   const addLine = () => {
     setLineItems((prev) => [
       ...prev,
-      { productId: "", quantity: "1", unitPrice: "", batchNumber: "", expiryDate: "" },
+      { productId: "", quantity: "1", unitPrice: "", unit: "", batchNumber: "", expiryDate: "" },
     ]);
   };
 
@@ -142,6 +144,7 @@ export function NewPurchaseBill() {
           productId: line.productId,
           quantity: Number(line.quantity),
           unitPrice: line.unitPrice ? Number(line.unitPrice) : undefined,
+          unit: line.unit || undefined,
           batchNumber: line.batchNumber || undefined,
           expiryDate: line.expiryDate || undefined,
         })),
@@ -262,6 +265,24 @@ export function NewPurchaseBill() {
                       placeholder="Qty"
                       className="w-20 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
                     />
+                    {(product?.units?.length ?? 0) > 0 ? (
+                      <select
+                        value={line.unit}
+                        onChange={(e) => updateLine(index, { unit: e.target.value })}
+                        className="w-24 rounded-lg border border-gray-300 px-2 py-2 text-sm focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                      >
+                        <option value={product?.unit}>{product?.unit}</option>
+                        {product?.units?.map((u) => (
+                          <option key={u.id} value={u.name}>
+                            {u.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="w-24 text-center text-sm text-gray-500">
+                        {product?.unit ?? ""}
+                      </span>
+                    )}
                     <input
                       type="number"
                       min="0"

@@ -158,6 +158,8 @@ model Business {
   quotations      Quotation[]
   purchaseOrders  PurchaseOrder[]
   deliveryChallans DeliveryChallan[]
+  priceLists      PriceList[]
+  discountSchemes DiscountScheme[]
 
   @@map("businesses")
 }
@@ -169,6 +171,7 @@ model Account {
   name           String
   type           AccountType
   isSystem       Boolean     @default(false)
+  isBankAccount  Boolean     @default(false)
   openingBalance Decimal     @default(0) @db.Decimal(14, 2)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -201,12 +204,14 @@ model JournalEntry {
 }
 
 model JournalEntryLine {
-  id             String  @id @default(cuid())
+  id             String    @id @default(cuid())
   journalEntryId String
   accountId      String
-  debit          Decimal @default(0) @db.Decimal(14, 2)
-  credit         Decimal @default(0) @db.Decimal(14, 2)
+  debit          Decimal   @default(0) @db.Decimal(14, 2)
+  credit         Decimal   @default(0) @db.Decimal(14, 2)
   description    String?
+  isReconciled   Boolean   @default(false)
+  reconciledAt   DateTime?
 
   journalEntry JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account      Account      @relation(fields: [accountId], references: [id])
@@ -365,6 +370,7 @@ model Membership {
 model Customer {
   id             String   @id @default(cuid())
   businessId     String
+  priceListId    String?
   name           String
   phone          String?
   email          String?
@@ -376,13 +382,74 @@ model Customer {
   updatedAt      DateTime @updatedAt
 
   business         Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  priceList        PriceList?        @relation(fields: [priceListId], references: [id])
   salesInvoices    SalesInvoice[]
   salesReturns     SalesReturn[]
   quotations       Quotation[]
   deliveryChallans DeliveryChallan[]
 
   @@index([businessId])
+  @@index([priceListId])
   @@map("customers")
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FLAT
+}
+
+model PriceList {
+  id        String   @id @default(cuid())
+  businessId String
+  name      String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  business  Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  items     PriceListItem[]
+  customers Customer[]
+
+  @@unique([businessId, name])
+  @@index([businessId])
+  @@map("price_lists")
+}
+
+model PriceListItem {
+  id          String  @id @default(cuid())
+  priceListId String
+  productId   String
+  price       Decimal @db.Decimal(14, 2)
+
+  priceList PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([priceListId, productId])
+  @@index([priceListId])
+  @@index([productId])
+  @@map("price_list_items")
+}
+
+model DiscountScheme {
+  id           String       @id @default(cuid())
+  businessId   String
+  name         String
+  discountType DiscountType
+  value        Decimal      @db.Decimal(14, 2)
+  productId    String?
+  minQuantity  Decimal      @default(0) @db.Decimal(14, 2)
+  startDate    DateTime?
+  endDate      DateTime?
+  isActive     Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@index([productId])
+  @@map("discount_schemes")
 }
 
 model Supplier {
@@ -437,9 +504,26 @@ model Product {
   quotationItems      QuotationItem[]
   purchaseOrderItems  PurchaseOrderItem[]
   deliveryChallanItems DeliveryChallanItem[]
+  units               ProductUnit[]
+  priceListItems      PriceListItem[]
+  discountSchemes     DiscountScheme[]
 
   @@index([businessId])
   @@map("products")
+}
+
+model ProductUnit {
+  id               String   @id @default(cuid())
+  productId        String
+  name             String
+  conversionFactor Decimal  @db.Decimal(14, 4)
+  createdAt        DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, name])
+  @@index([productId])
+  @@map("product_units")
 }
 
 model SalesInvoice {
@@ -494,15 +578,17 @@ model SalesPayment {
 }
 
 model SalesInvoiceItem {
-  id             String  @id @default(cuid())
-  salesInvoiceId String
-  productId      String
-  productName    String
-  quantity       Decimal @db.Decimal(14, 2)
-  unitPrice      Decimal @db.Decimal(14, 2)
-  gstRate        Decimal @db.Decimal(5, 2)
-  taxAmount      Decimal @db.Decimal(14, 2)
-  lineTotal      Decimal @db.Decimal(14, 2)
+  id                   String  @id @default(cuid())
+  salesInvoiceId       String
+  productId            String
+  productName          String
+  quantity             Decimal @db.Decimal(14, 2)
+  unitPrice            Decimal @db.Decimal(14, 2)
+  unit                 String  @default("")
+  unitConversionFactor Decimal @default(1) @db.Decimal(14, 4)
+  gstRate              Decimal @db.Decimal(5, 2)
+  taxAmount            Decimal @db.Decimal(14, 2)
+  lineTotal            Decimal @db.Decimal(14, 2)
 
   salesInvoice SalesInvoice           @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
   product      Product                @relation(fields: [productId], references: [id])
@@ -769,13 +855,15 @@ model PurchasePayment {
 }
 
 model PurchaseBillItem {
-  id              String    @id @default(cuid())
-  purchaseBillId  String
-  productId       String
-  productName     String
-  quantity        Decimal   @db.Decimal(14, 2)
-  unitPrice       Decimal   @db.Decimal(14, 2)
-  gstRate         Decimal   @db.Decimal(5, 2)
+  id                   String    @id @default(cuid())
+  purchaseBillId       String
+  productId            String
+  productName          String
+  quantity             Decimal   @db.Decimal(14, 2)
+  unitPrice            Decimal   @db.Decimal(14, 2)
+  unit                 String    @default("")
+  unitConversionFactor Decimal   @default(1) @db.Decimal(14, 4)
+  gstRate              Decimal   @db.Decimal(5, 2)
   taxAmount       Decimal   @db.Decimal(14, 2)
   lineTotal       Decimal   @db.Decimal(14, 2)
   batchNumber     String?
