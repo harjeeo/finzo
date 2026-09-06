@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
-import { Cancel01Icon } from "hugeicons-react";
 import type { Supplier, SupplierInput } from "../lib/suppliers-api";
+import { SidePanel } from "./SidePanel";
 
 interface SupplierFormModalProps {
   supplier: Supplier | null;
@@ -44,21 +44,10 @@ export function SupplierFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {supplier ? "Edit Supplier" : "Add Supplier"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-            aria-label="Close"
-          >
-            <Cancel01Icon size={20} />
-          </button>
-        </div>
-
+    <SidePanel
+      title={supplier ? "Edit Supplier" : "Add Supplier"}
+      onClose={onClose}
+    >
         <form className="space-y-3" onSubmit={handleSubmit}>
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -152,7 +141,6 @@ export function SupplierFormModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </SidePanel>
   );
 }

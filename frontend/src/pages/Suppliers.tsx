@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { Add01Icon, Delete02Icon, PencilEdit01Icon } from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
 import { canManageCatalog, hasRole } from "../lib/permissions";
@@ -12,6 +11,7 @@ import {
   type SupplierInput,
 } from "../lib/suppliers-api";
 import { SupplierFormModal } from "../components/SupplierFormModal";
+import { SupplierViewPanel } from "../components/SupplierViewPanel";
 
 export function Suppliers() {
   const { accessToken, user } = useAuth();
@@ -22,6 +22,7 @@ export function Suppliers() {
   const [modalState, setModalState] = useState<
     { mode: "create" } | { mode: "edit"; supplier: Supplier } | null
   >(null);
+  const [viewingSupplier, setViewingSupplier] = useState<Supplier | null>(null);
 
   const loadSuppliers = async () => {
     if (!accessToken) return;
@@ -100,12 +101,12 @@ export function Suppliers() {
               {suppliers.map((supplier) => (
                 <tr key={supplier.id}>
                   <td className="px-4 py-3 font-medium">
-                    <Link
-                      to={`/suppliers/${supplier.id}`}
+                    <button
+                      onClick={() => setViewingSupplier(supplier)}
                       className="text-purple-600 hover:underline"
                     >
                       {supplier.name}
-                    </Link>
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-gray-600">
                     {supplier.phone || "-"}
@@ -153,6 +154,13 @@ export function Suppliers() {
           supplier={modalState.mode === "edit" ? modalState.supplier : null}
           onClose={() => setModalState(null)}
           onSubmit={handleSubmit}
+        />
+      )}
+
+      {viewingSupplier && (
+        <SupplierViewPanel
+          supplier={viewingSupplier}
+          onClose={() => setViewingSupplier(null)}
         />
       )}
     </div>

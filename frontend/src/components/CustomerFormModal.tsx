@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Cancel01Icon } from "hugeicons-react";
 import type { Customer, CustomerInput } from "../lib/customers-api";
 import { useAuth } from "../lib/auth-context";
 import { listPriceLists, type PriceList } from "../lib/price-lists-api";
+import { SidePanel } from "./SidePanel";
 
 interface CustomerFormModalProps {
   customer: Customer | null;
@@ -55,21 +55,10 @@ export function CustomerFormModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {customer ? "Edit Customer" : "Add Customer"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-            aria-label="Close"
-          >
-            <Cancel01Icon size={20} />
-          </button>
-        </div>
-
+    <SidePanel
+      title={customer ? "Edit Customer" : "Add Customer"}
+      onClose={onClose}
+    >
         <form className="space-y-3" onSubmit={handleSubmit}>
           <div>
             <label className="block text-sm font-medium text-gray-700">
@@ -181,7 +170,6 @@ export function CustomerFormModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </SidePanel>
   );
 }

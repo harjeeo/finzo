@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { Add01Icon, Delete02Icon, PencilEdit01Icon } from "hugeicons-react";
 import { useAuth } from "../lib/auth-context";
 import { canCreateCustomers, canManageCustomersWrite, hasRole } from "../lib/permissions";
@@ -12,6 +11,7 @@ import {
   type CustomerInput,
 } from "../lib/customers-api";
 import { CustomerFormModal } from "../components/CustomerFormModal";
+import { CustomerViewPanel } from "../components/CustomerViewPanel";
 
 export function Customers() {
   const { accessToken, user } = useAuth();
@@ -23,6 +23,7 @@ export function Customers() {
   const [modalState, setModalState] = useState<
     { mode: "create" } | { mode: "edit"; customer: Customer } | null
   >(null);
+  const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
 
   const loadCustomers = async () => {
     if (!accessToken) return;
@@ -101,12 +102,12 @@ export function Customers() {
               {customers.map((customer) => (
                 <tr key={customer.id}>
                   <td className="px-4 py-3 font-medium">
-                    <Link
-                      to={`/customers/${customer.id}`}
+                    <button
+                      onClick={() => setViewingCustomer(customer)}
                       className="text-purple-600 hover:underline"
                     >
                       {customer.name}
-                    </Link>
+                    </button>
                   </td>
                   <td className="px-4 py-3 text-gray-600">
                     {customer.phone || "-"}
@@ -154,6 +155,13 @@ export function Customers() {
           customer={modalState.mode === "edit" ? modalState.customer : null}
           onClose={() => setModalState(null)}
           onSubmit={handleSubmit}
+        />
+      )}
+
+      {viewingCustomer && (
+        <CustomerViewPanel
+          customer={viewingCustomer}
+          onClose={() => setViewingCustomer(null)}
         />
       )}
     </div>

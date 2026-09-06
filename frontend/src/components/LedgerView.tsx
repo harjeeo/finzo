@@ -10,8 +10,8 @@ interface Party {
 }
 
 interface LedgerViewProps {
-  backTo: string;
-  backLabel: string;
+  backTo?: string;
+  backLabel?: string;
   party: Party;
   openingBalance: number;
   outstandingBalance: number;
@@ -28,15 +28,17 @@ export function LedgerView({
 }: LedgerViewProps) {
   return (
     <div>
-      <Link
-        to={backTo}
-        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-      >
-        <ArrowLeft01Icon size={16} />
-        {backLabel}
-      </Link>
+      {backTo && (
+        <Link
+          to={backTo}
+          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+        >
+          <ArrowLeft01Icon size={16} />
+          {backLabel}
+        </Link>
+      )}
 
-      <div className="mt-4 flex items-center justify-between">
+      <div className={backTo ? "mt-4 flex items-center justify-between" : "flex items-center justify-between"}>
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">{party.name}</h1>
           <p className="mt-1 text-sm text-gray-500">
