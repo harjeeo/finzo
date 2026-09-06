@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\CamelCasesAttributes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class User extends Model
 {
-    use HasUuids;
+    use HasUuids, CamelCasesAttributes;
 
     protected $fillable = ['name', 'email', 'phone', 'password_hash', 'is_super_admin'];
 

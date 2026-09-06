@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\CamelCasesAttributes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Godown extends Model
 {
-    use HasUuids;
+    use HasUuids, CamelCasesAttributes;
 
     protected $fillable = ['business_id', 'branch_id', 'name', 'address', 'is_default'];
 

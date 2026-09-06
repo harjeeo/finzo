@@ -6,20 +6,20 @@ use App\Models\Concerns\CamelCasesAttributes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
-class Account extends Model
+class Customer extends Model
 {
     use HasUuids, CamelCasesAttributes;
 
     protected $fillable = [
-        'business_id', 'code', 'name', 'type', 'is_system', 'is_bank_account', 'opening_balance',
+        'business_id', 'name', 'phone', 'email', 'gstin', 'address',
+        'opening_balance', 'credit_limit',
     ];
 
     protected function casts(): array
     {
         return [
-            'is_system' => 'boolean',
-            'is_bank_account' => 'boolean',
             'opening_balance' => 'decimal:2',
+            'credit_limit' => 'decimal:2',
         ];
     }
 
