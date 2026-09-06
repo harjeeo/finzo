@@ -35,4 +35,13 @@ return [
         ],
     ],
 
+    'jwt' => [
+        'access_secret' => env('JWT_ACCESS_SECRET'),
+        'refresh_secret' => env('JWT_REFRESH_SECRET'),
+        'access_expires_in_minutes' => env('JWT_ACCESS_EXPIRES_IN', 15),
+        'refresh_expires_in_minutes' => env('JWT_REFRESH_EXPIRES_IN', 10080),
+    ],
+
+    'super_admin_emails' => env('SUPER_ADMIN_EMAILS', ''),
+
 ];
