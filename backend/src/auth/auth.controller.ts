@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Post, UseGuards } from '@n
 import { AuthService } from './auth.service.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
+import { RefreshDto } from './dto/refresh.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import type { JwtPayload } from './types/jwt-payload.type.js';
@@ -19,6 +20,12 @@ export class AuthController {
   @Post('login')
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('refresh')
+  refresh(@Body() dto: RefreshDto) {
+    return this.authService.refresh(dto.refreshToken);
   }
 
   @UseGuards(JwtAuthGuard)

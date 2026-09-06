@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { apiFetch } from "./api";
+import { apiFetch, AUTH_CHANGED_EVENT, AUTH_STORAGE_KEY } from "./api";
 
 interface AuthTokens {
   accessToken: string;
@@ -37,8 +37,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-const STORAGE_KEY = "finzo.auth";
-
 function decodeJwt(token: string): AuthUser | null {
   try {
     const payload = token.split(".")[1];
@@ -54,23 +52,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
     if (stored) {
       try {
         setTokens(JSON.parse(stored));
       } catch {
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(AUTH_STORAGE_KEY);
       }
     }
     setIsLoading(false);
+
+    // apiFetch silently refreshes (or clears) tokens on 401s outside of any
+    // user action; this keeps React state in sync with that.
+    const handleAuthChanged = (event: Event) => {
+      setTokens((event as CustomEvent<AuthTokens | null>).detail);
+    };
+    window.addEventListener(AUTH_CHANGED_EVENT, handleAuthChanged);
+    return () => window.removeEventListener(AUTH_CHANGED_EVENT, handleAuthChanged);
   }, []);
 
   const persistTokens = (next: AuthTokens | null) => {
     setTokens(next);
     if (next) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(next));
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(AUTH_STORAGE_KEY);
     }
   };
 

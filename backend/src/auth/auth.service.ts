@@ -14,6 +14,11 @@ import { RegisterDto } from './dto/register.dto.js';
 import { LoginDto } from './dto/login.dto.js';
 import type { JwtPayload } from './types/jwt-payload.type.js';
 
+interface RefreshTokenPayload extends JwtPayload {
+  iat: number;
+  exp: number;
+}
+
 const SALT_ROUNDS = 12;
 
 @Injectable()
@@ -148,6 +153,41 @@ export class AuthService {
       email: user.email,
       businessId: primaryMembership?.businessId ?? null,
       role: primaryMembership?.role ?? null,
+      isSuperAdmin: user.isSuperAdmin,
+    });
+  }
+
+  async refresh(refreshToken: string) {
+    let payload: RefreshTokenPayload;
+    try {
+      payload = this.jwtService.verify<RefreshTokenPayload>(refreshToken, {
+        secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+    if (!user) {
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+
+    if (payload.businessId) {
+      const business = await this.prisma.business.findUnique({
+        where: { id: payload.businessId },
+      });
+      if (business?.status === 'SUSPENDED') {
+        throw new ForbiddenException(
+          'This business account has been suspended. Please contact support.',
+        );
+      }
+    }
+
+    return this.buildTokens({
+      sub: user.id,
+      email: user.email,
+      businessId: payload.businessId,
+      role: payload.role,
       isSuperAdmin: user.isSuperAdmin,
     });
   }
