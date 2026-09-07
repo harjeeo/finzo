@@ -52,4 +52,9 @@ class CustomerController extends Controller
             $this->customerService->remove($this->businessId($request), $id, $this->actor($request)),
         );
     }
+
+    public function ledger(Request $request, string $id): JsonResponse
+    {
+        return response()->json($this->customerService->getLedger($this->businessId($request), $id));
+    }
 }

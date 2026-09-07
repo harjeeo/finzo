@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Models\Customer;
+use App\Models\SalesInvoice;
+use App\Models\SalesPayment;
+use App\Models\SalesReturn;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
@@ -106,5 +109,69 @@ class CustomerService
         });
 
         return ['success' => true];
+    }
+
+    public function getLedger(string $businessId, string $id): array
+    {
+        $customer = $this->findOne($businessId, $id);
+
+        $invoices = SalesInvoice::where('business_id', $businessId)
+            ->where('customer_id', $id)
+            ->where('status', '!=', 'CANCELLED')
+            ->get(['id', 'invoice_number', 'invoice_date', 'grand_total']);
+
+        $payments = SalesPayment::whereHas('salesInvoice', function ($q) use ($businessId, $id) {
+            $q->where('business_id', $businessId)->where('customer_id', $id);
+        })->with('salesInvoice:id,invoice_number')->get(['id', 'sales_invoice_id', 'amount', 'payment_date', 'payment_mode']);
+
+        $returns = SalesReturn::where('business_id', $businessId)
+            ->where('customer_id', $id)
+            ->get(['id', 'return_number', 'return_date', 'grand_total']);
+
+        $entries = collect()
+            ->concat($invoices->map(fn ($inv) => [
+                'date' => $inv->invoice_date,
+                'type' => 'INVOICE',
+                'reference' => $inv->invoice_number,
+                'debit' => (float) $inv->grand_total,
+                'credit' => 0,
+            ]))
+            ->concat($payments->map(fn ($p) => [
+                'date' => $p->payment_date,
+                'type' => 'PAYMENT',
+                'reference' => "{$p->salesInvoice->invoice_number} · {$p->payment_mode}",
+                'debit' => 0,
+                'credit' => (float) $p->amount,
+            ]))
+            ->concat($returns->map(fn ($ret) => [
+                'date' => $ret->return_date,
+                'type' => 'RETURN',
+                'reference' => $ret->return_number,
+                'debit' => 0,
+                'credit' => (float) $ret->grand_total,
+            ]))
+            ->sortBy(fn ($e) => $e['date']->timestamp)
+            ->values();
+
+        $balance = (float) $customer->opening_balance;
+        $transactions = $entries->map(function ($entry) use (&$balance) {
+            $balance += $entry['debit'] - $entry['credit'];
+
+            return [
+                'date' => $entry['date']->toJSON(),
+                'type' => $entry['type'],
+                'reference' => $entry['reference'],
+                'debit' => $entry['debit'],
+                'credit' => $entry['credit'],
+                'balance' => $balance,
+            ];
+        })->values()->all();
+
+        return [
+            'customer' => $customer,
+            'openingBalance' => (float) $customer->opening_balance,
+            'transactions' => $transactions,
+            'outstandingBalance' => $balance,
+        ];
     }
 }

@@ -52,4 +52,9 @@ class SupplierController extends Controller
             $this->supplierService->remove($this->businessId($request), $id, $this->actor($request)),
         );
     }
+
+    public function ledger(Request $request, string $id): JsonResponse
+    {
+        return response()->json($this->supplierService->getLedger($this->businessId($request), $id));
+    }
 }
