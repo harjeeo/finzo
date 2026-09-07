@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseBillController;
 use App\Http\Controllers\Api\SalesInvoiceController;
@@ -54,4 +56,19 @@ Route::middleware('jwt.auth')->group(function () {
     Route::post('sales-invoices/{id}/payments', [SalesInvoiceController::class, 'addPayment']);
     Route::post('sales-invoices/{id}/returns', [SalesInvoiceController::class, 'createReturn'])->middleware('roles:MANAGER');
     Route::delete('sales-invoices/{id}', [SalesInvoiceController::class, 'destroy'])->middleware('roles:MANAGER');
+
+    Route::middleware('roles:MANAGER,ACCOUNTANT')->group(function () {
+        Route::get('accounts', [AccountController::class, 'index']);
+        Route::get('accounts/{id}', [AccountController::class, 'show']);
+        Route::post('accounts', [AccountController::class, 'store']);
+        Route::patch('accounts/{id}', [AccountController::class, 'update']);
+        Route::delete('accounts/{id}', [AccountController::class, 'destroy']);
+
+        Route::get('journal/entries', [JournalController::class, 'index']);
+        Route::get('journal/entries/{id}', [JournalController::class, 'show']);
+        Route::post('journal/entries', [JournalController::class, 'store']);
+        Route::delete('journal/entries/{id}', [JournalController::class, 'destroy']);
+        Route::get('journal/ledger/{accountId}', [JournalController::class, 'ledger']);
+        Route::get('journal/trial-balance', [JournalController::class, 'trialBalance']);
+    });
 });
