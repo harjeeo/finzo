@@ -27,4 +27,9 @@ class Account extends Model
     {
         return $this->belongsTo(Business::class);
     }
+
+    public function journalLines()
+    {
+        return $this->hasMany(JournalEntryLine::class);
+    }
 }

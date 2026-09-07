@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\PurchaseBillController;
 use App\Http\Controllers\Api\SupplierController;
 use Illuminate\Support\Facades\Route;
 
@@ -34,4 +35,13 @@ Route::middleware('jwt.auth')->group(function () {
     Route::post('products/{id}/units', [ProductController::class, 'createUnit'])->middleware('roles:MANAGER');
     Route::patch('products/{id}/units/{unitId}', [ProductController::class, 'updateUnit'])->middleware('roles:MANAGER');
     Route::delete('products/{id}/units/{unitId}', [ProductController::class, 'removeUnit'])->middleware('roles:MANAGER');
+
+    Route::middleware('roles:MANAGER,ACCOUNTANT')->group(function () {
+        Route::get('purchase-bills', [PurchaseBillController::class, 'index']);
+        Route::get('purchase-bills/{id}', [PurchaseBillController::class, 'show']);
+        Route::post('purchase-bills', [PurchaseBillController::class, 'store']);
+        Route::post('purchase-bills/{id}/payments', [PurchaseBillController::class, 'addPayment']);
+        Route::post('purchase-bills/{id}/returns', [PurchaseBillController::class, 'createReturn']);
+        Route::delete('purchase-bills/{id}', [PurchaseBillController::class, 'destroy']);
+    });
 });
