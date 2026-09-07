@@ -10,9 +10,9 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * Ports the NestJS StockService one method at a time as the modules that need
- * them get ported. adjustStock/receiveExisting/receive/remove exist so far
- * (used by Products' openingStock and Purchases); consumeSimple/consumeFefo/
- * restoreBatches land with Sales.
+ * them get ported. adjustStock/receiveExisting/receive/remove/consumeSimple/
+ * consumeFefo exist so far (used by Products' openingStock, Purchases, and
+ * Sales); restoreBatches/getStockByProduct/getExpiryReport land later.
  */
 class StockService
 {
@@ -118,5 +118,82 @@ class StockService
             'sourceType' => $params['sourceType'],
             'sourceId' => $params['sourceId'] ?? null,
         ]);
+    }
+
+    /** Consumes stock for a non-batch-tracked product from a single godown. */
+    public function consumeSimple(array $params): void
+    {
+        $this->adjustStock([
+            'businessId' => $params['businessId'],
+            'productId' => $params['productId'],
+            'godownId' => $params['godownId'],
+            'batchId' => null,
+            'quantityDelta' => -$params['quantity'],
+            'sourceType' => $params['sourceType'],
+            'sourceId' => $params['sourceId'] ?? null,
+        ]);
+    }
+
+    /**
+     * Consumes stock for a batch-tracked product using FEFO (first-expiring-first-out),
+     * splitting across batches if needed. Throws if the godown doesn't have enough total stock.
+     *
+     * @return array<int, array{batchId: string, batchNumber: string, quantity: float}>
+     */
+    public function consumeFefo(array $params): array
+    {
+        $stocks = ProductStock::where('product_id', $params['productId'])
+            ->where('godown_id', $params['godownId'])
+            ->whereNotNull('batch_id')
+            ->where('quantity', '>', 0)
+            ->with('batch')
+            ->get()
+            ->sort(function (ProductStock $a, ProductStock $b) {
+                $aExpiry = $a->batch?->expiry_date?->timestamp ?? PHP_INT_MAX;
+                $bExpiry = $b->batch?->expiry_date?->timestamp ?? PHP_INT_MAX;
+                if ($aExpiry !== $bExpiry) {
+                    return $aExpiry <=> $bExpiry;
+                }
+
+                return ($a->batch?->created_at?->timestamp ?? 0) <=> ($b->batch?->created_at?->timestamp ?? 0);
+            })
+            ->values();
+
+        $remaining = $params['quantity'];
+        $consumed = [];
+
+        foreach ($stocks as $stock) {
+            if ($remaining <= 0) {
+                break;
+            }
+            $available = (float) $stock->quantity;
+            $take = min($available, $remaining);
+            if ($take <= 0 || ! $stock->batch) {
+                continue;
+            }
+
+            $this->adjustStock([
+                'businessId' => $params['businessId'],
+                'productId' => $params['productId'],
+                'godownId' => $params['godownId'],
+                'batchId' => $stock->batch_id,
+                'quantityDelta' => -$take,
+                'sourceType' => $params['sourceType'],
+                'sourceId' => $params['sourceId'] ?? null,
+            ]);
+
+            $consumed[] = [
+                'batchId' => $stock->batch_id,
+                'batchNumber' => $stock->batch->batch_number,
+                'quantity' => $take,
+            ];
+            $remaining -= $take;
+        }
+
+        if ($remaining > 0) {
+            throw new HttpException(400, 'Insufficient batch stock in the selected godown for this product');
+        }
+
+        return $consumed;
     }
 }

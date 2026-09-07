@@ -19,6 +19,7 @@ class Batch extends Model
         return [
             'manufacture_date' => 'date',
             'expiry_date' => 'date',
+            'created_at' => 'datetime',
         ];
     }
 

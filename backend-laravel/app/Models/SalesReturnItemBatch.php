@@ -6,27 +6,24 @@ use App\Models\Concerns\CamelCasesAttributes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
-class ProductStock extends Model
+class SalesReturnItemBatch extends Model
 {
     use HasUuids, CamelCasesAttributes;
 
     public $timestamps = false;
 
-    protected $fillable = ['business_id', 'product_id', 'godown_id', 'batch_id', 'quantity'];
+    protected $fillable = ['sales_return_item_id', 'batch_id', 'quantity'];
 
     protected function casts(): array
     {
         return [
             'quantity' => 'decimal:2',
-            'updated_at' => 'datetime',
         ];
     }
 
-    protected static function booted(): void
+    public function salesReturnItem()
     {
-        static::saving(function (ProductStock $stock) {
-            $stock->updated_at = now();
-        });
+        return $this->belongsTo(SalesReturnItem::class);
     }
 
     public function batch()

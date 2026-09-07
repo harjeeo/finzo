@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseBillController;
+use App\Http\Controllers\Api\SalesInvoiceController;
 use App\Http\Controllers\Api\SupplierController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,4 +45,11 @@ Route::middleware('jwt.auth')->group(function () {
         Route::post('purchase-bills/{id}/returns', [PurchaseBillController::class, 'createReturn']);
         Route::delete('purchase-bills/{id}', [PurchaseBillController::class, 'destroy']);
     });
+
+    Route::get('sales-invoices', [SalesInvoiceController::class, 'index']);
+    Route::get('sales-invoices/{id}', [SalesInvoiceController::class, 'show']);
+    Route::post('sales-invoices', [SalesInvoiceController::class, 'store']);
+    Route::post('sales-invoices/{id}/payments', [SalesInvoiceController::class, 'addPayment']);
+    Route::post('sales-invoices/{id}/returns', [SalesInvoiceController::class, 'createReturn'])->middleware('roles:MANAGER');
+    Route::delete('sales-invoices/{id}', [SalesInvoiceController::class, 'destroy'])->middleware('roles:MANAGER');
 });
