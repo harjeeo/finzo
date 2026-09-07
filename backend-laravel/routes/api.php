@@ -2,10 +2,13 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BranchController;
+use App\Http\Controllers\Api\BusinessController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DeliveryChallanController;
 use App\Http\Controllers\Api\ExpenseController;
+use App\Http\Controllers\Api\GodownController;
 use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseBillController;
@@ -13,6 +16,7 @@ use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\SalesInvoiceController;
+use App\Http\Controllers\Api\StaffController;
 use App\Http\Controllers\Api\SupplierController;
 use Illuminate\Support\Facades\Route;
 
@@ -115,4 +119,22 @@ Route::middleware('jwt.auth')->group(function () {
     Route::post('delivery-challans', [DeliveryChallanController::class, 'store']);
     Route::patch('delivery-challans/{id}/status', [DeliveryChallanController::class, 'updateStatus']);
     Route::delete('delivery-challans/{id}', [DeliveryChallanController::class, 'destroy']);
+
+    Route::get('branches', [BranchController::class, 'index']);
+    Route::post('branches', [BranchController::class, 'store'])->middleware('roles:MANAGER');
+    Route::patch('branches/{id}', [BranchController::class, 'update'])->middleware('roles:MANAGER');
+    Route::delete('branches/{id}', [BranchController::class, 'destroy'])->middleware('roles:MANAGER');
+
+    Route::get('godowns', [GodownController::class, 'index']);
+    Route::post('godowns', [GodownController::class, 'store'])->middleware('roles:MANAGER');
+    Route::patch('godowns/{id}', [GodownController::class, 'update'])->middleware('roles:MANAGER');
+    Route::delete('godowns/{id}', [GodownController::class, 'destroy'])->middleware('roles:MANAGER');
+
+    Route::get('business', [BusinessController::class, 'show']);
+    Route::patch('business', [BusinessController::class, 'update'])->middleware('roles');
+
+    Route::get('staff', [StaffController::class, 'index'])->middleware('roles:MANAGER');
+    Route::post('staff', [StaffController::class, 'store'])->middleware('roles');
+    Route::patch('staff/{id}', [StaffController::class, 'update'])->middleware('roles');
+    Route::delete('staff/{id}', [StaffController::class, 'destroy'])->middleware('roles');
 });
