@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseBillController;
@@ -72,6 +73,12 @@ Route::middleware('jwt.auth')->group(function () {
         Route::delete('journal/entries/{id}', [JournalController::class, 'destroy']);
         Route::get('journal/ledger/{accountId}', [JournalController::class, 'ledger']);
         Route::get('journal/trial-balance', [JournalController::class, 'trialBalance']);
+
+        Route::get('expenses', [ExpenseController::class, 'index']);
+        Route::get('expenses/{id}', [ExpenseController::class, 'show']);
+        Route::post('expenses', [ExpenseController::class, 'store']);
+        Route::patch('expenses/{id}', [ExpenseController::class, 'update']);
+        Route::delete('expenses/{id}', [ExpenseController::class, 'destroy']);
     });
 
     Route::get('dashboard/summary', [DashboardController::class, 'summary']);

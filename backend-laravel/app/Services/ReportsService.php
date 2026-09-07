@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Expense;
 use App\Models\Product;
 use App\Models\PurchaseBill;
 use App\Models\SalesInvoice;
@@ -39,9 +40,11 @@ class ReportsService
         $purchaseTax = (float) (clone $purchaseQuery)->sum('tax_total');
         $purchaseCount = (clone $purchaseQuery)->count();
 
-        // Expenses module isn't ported yet, so expense figures are always 0 for now.
-        $expenseTotal = 0.0;
-        $expenseCount = 0;
+        $expenseQuery = Expense::where('business_id', $businessId)
+            ->whereBetween('expense_date', [$start, $end])
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId));
+        $expenseTotal = (float) (clone $expenseQuery)->sum('amount');
+        $expenseCount = (clone $expenseQuery)->count();
 
         return [
             'range' => ['from' => $start->toJSON(), 'to' => $end->toJSON()],
