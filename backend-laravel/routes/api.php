@@ -3,9 +3,11 @@
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseBillController;
+use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\SalesInvoiceController;
 use App\Http\Controllers\Api\SupplierController;
 use Illuminate\Support\Facades\Route;
@@ -70,5 +72,15 @@ Route::middleware('jwt.auth')->group(function () {
         Route::delete('journal/entries/{id}', [JournalController::class, 'destroy']);
         Route::get('journal/ledger/{accountId}', [JournalController::class, 'ledger']);
         Route::get('journal/trial-balance', [JournalController::class, 'trialBalance']);
+    });
+
+    Route::get('dashboard/summary', [DashboardController::class, 'summary']);
+
+    Route::middleware('roles:MANAGER,ACCOUNTANT')->group(function () {
+        Route::get('reports/summary', [ReportsController::class, 'summary']);
+        Route::get('reports/stock', [ReportsController::class, 'stock']);
+        Route::get('reports/gstr1', [ReportsController::class, 'gstr1']);
+        Route::get('reports/gstr1/export', [ReportsController::class, 'exportGstr1']);
+        Route::get('reports/gstr3b', [ReportsController::class, 'gstr3b']);
     });
 });
