@@ -41,4 +41,14 @@ class Business extends Model
     {
         return $this->hasMany(Account::class);
     }
+
+    public function salesInvoices()
+    {
+        return $this->hasMany(SalesInvoice::class);
+    }
+
+    public function purchaseBills()
+    {
+        return $this->hasMany(PurchaseBill::class);
+    }
 }

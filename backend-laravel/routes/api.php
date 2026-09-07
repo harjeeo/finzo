@@ -14,9 +14,11 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseBillController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\ReconciliationController;
 use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\SalesInvoiceController;
 use App\Http\Controllers\Api\StaffController;
+use App\Http\Controllers\Api\SuperAdminController;
 use App\Http\Controllers\Api\SupplierController;
 use Illuminate\Support\Facades\Route;
 
@@ -137,4 +139,17 @@ Route::middleware('jwt.auth')->group(function () {
     Route::post('staff', [StaffController::class, 'store'])->middleware('roles');
     Route::patch('staff/{id}', [StaffController::class, 'update'])->middleware('roles');
     Route::delete('staff/{id}', [StaffController::class, 'destroy'])->middleware('roles');
+
+    Route::middleware('roles:MANAGER,ACCOUNTANT')->group(function () {
+        Route::get('reconciliation/accounts', [ReconciliationController::class, 'accounts']);
+        Route::get('reconciliation/{accountId}', [ReconciliationController::class, 'show']);
+        Route::patch('reconciliation/{accountId}/lines/{lineId}', [ReconciliationController::class, 'setReconciled']);
+    });
+
+    Route::middleware('super-admin')->prefix('admin')->group(function () {
+        Route::get('stats', [SuperAdminController::class, 'stats']);
+        Route::get('businesses', [SuperAdminController::class, 'businesses']);
+        Route::get('businesses/{id}', [SuperAdminController::class, 'showBusiness']);
+        Route::patch('businesses/{id}/status', [SuperAdminController::class, 'updateBusinessStatus']);
+    });
 });
