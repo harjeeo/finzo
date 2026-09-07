@@ -4,10 +4,13 @@ use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DeliveryChallanController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseBillController;
+use App\Http\Controllers\Api\PurchaseOrderController;
+use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\ReportsController;
 use App\Http\Controllers\Api\SalesInvoiceController;
 use App\Http\Controllers\Api\SupplierController;
@@ -90,4 +93,26 @@ Route::middleware('jwt.auth')->group(function () {
         Route::get('reports/gstr1/export', [ReportsController::class, 'exportGstr1']);
         Route::get('reports/gstr3b', [ReportsController::class, 'gstr3b']);
     });
+
+    Route::get('quotations', [QuotationController::class, 'index']);
+    Route::get('quotations/{id}', [QuotationController::class, 'show']);
+    Route::post('quotations', [QuotationController::class, 'store']);
+    Route::patch('quotations/{id}/status', [QuotationController::class, 'updateStatus']);
+    Route::post('quotations/{id}/convert', [QuotationController::class, 'convert']);
+    Route::delete('quotations/{id}', [QuotationController::class, 'destroy'])->middleware('roles:MANAGER');
+
+    Route::middleware('roles:MANAGER,ACCOUNTANT')->group(function () {
+        Route::get('purchase-orders', [PurchaseOrderController::class, 'index']);
+        Route::get('purchase-orders/{id}', [PurchaseOrderController::class, 'show']);
+        Route::post('purchase-orders', [PurchaseOrderController::class, 'store']);
+        Route::patch('purchase-orders/{id}/status', [PurchaseOrderController::class, 'updateStatus']);
+        Route::post('purchase-orders/{id}/convert', [PurchaseOrderController::class, 'convert']);
+        Route::delete('purchase-orders/{id}', [PurchaseOrderController::class, 'destroy']);
+    });
+
+    Route::get('delivery-challans', [DeliveryChallanController::class, 'index']);
+    Route::get('delivery-challans/{id}', [DeliveryChallanController::class, 'show']);
+    Route::post('delivery-challans', [DeliveryChallanController::class, 'store']);
+    Route::patch('delivery-challans/{id}/status', [DeliveryChallanController::class, 'updateStatus']);
+    Route::delete('delivery-challans/{id}', [DeliveryChallanController::class, 'destroy']);
 });
