@@ -33,4 +33,14 @@ class ProductStock extends Model
     {
         return $this->belongsTo(Batch::class);
     }
+
+    public function godown()
+    {
+        return $this->belongsTo(Godown::class);
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
 }

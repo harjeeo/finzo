@@ -19,4 +19,16 @@ class AuditService
             'changes' => $params['changes'] ?? null,
         ]);
     }
+
+    public function findAll(string $businessId, array $filters = [])
+    {
+        return AuditLog::where('business_id', $businessId)
+            ->when($filters['entityType'] ?? null, fn ($q, $v) => $q->where('entity_type', $v))
+            ->when($filters['entityId'] ?? null, fn ($q, $v) => $q->where('entity_id', $v))
+            ->when($filters['from'] ?? null, fn ($q, $v) => $q->where('created_at', '>=', $v))
+            ->when($filters['to'] ?? null, fn ($q, $v) => $q->where('created_at', '<=', "{$v} 23:59:59.999"))
+            ->orderByDesc('created_at')
+            ->take(500)
+            ->get();
+    }
 }

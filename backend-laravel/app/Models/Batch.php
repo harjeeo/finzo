@@ -36,4 +36,9 @@ class Batch extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    public function stocks()
+    {
+        return $this->hasMany(ProductStock::class);
+    }
 }

@@ -1,14 +1,17 @@
 <?php
 
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BranchController;
 use App\Http\Controllers\Api\BusinessController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DeliveryChallanController;
+use App\Http\Controllers\Api\EwayBillController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\GodownController;
+use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseBillController;
@@ -68,6 +71,11 @@ Route::middleware('jwt.auth')->group(function () {
     Route::post('sales-invoices/{id}/payments', [SalesInvoiceController::class, 'addPayment']);
     Route::post('sales-invoices/{id}/returns', [SalesInvoiceController::class, 'createReturn'])->middleware('roles:MANAGER');
     Route::delete('sales-invoices/{id}', [SalesInvoiceController::class, 'destroy'])->middleware('roles:MANAGER');
+
+    Route::get('sales-invoices/{invoiceId}/eway-bill', [EwayBillController::class, 'show']);
+    Route::post('sales-invoices/{invoiceId}/eway-bill', [EwayBillController::class, 'generate'])->middleware('roles:MANAGER,ACCOUNTANT,CASHIER');
+    Route::patch('sales-invoices/{invoiceId}/eway-bill', [EwayBillController::class, 'update'])->middleware('roles:MANAGER,ACCOUNTANT,CASHIER');
+    Route::post('sales-invoices/{invoiceId}/eway-bill/cancel', [EwayBillController::class, 'cancel'])->middleware('roles:MANAGER,ACCOUNTANT');
 
     Route::middleware('roles:MANAGER,ACCOUNTANT')->group(function () {
         Route::get('accounts', [AccountController::class, 'index']);
@@ -152,4 +160,11 @@ Route::middleware('jwt.auth')->group(function () {
         Route::get('businesses/{id}', [SuperAdminController::class, 'showBusiness']);
         Route::patch('businesses/{id}/status', [SuperAdminController::class, 'updateBusinessStatus']);
     });
+
+    Route::get('audit-log', [AuditController::class, 'index'])->middleware('roles:MANAGER');
+
+    Route::get('products/{id}/stock', [InventoryController::class, 'stockByProduct']);
+    Route::get('batches/expiry-report', [InventoryController::class, 'expiryReport']);
+    Route::get('stock-transfers', [InventoryController::class, 'listTransfers']);
+    Route::post('stock-transfers', [InventoryController::class, 'createTransfer'])->middleware('roles:MANAGER,ACCOUNTANT');
 });

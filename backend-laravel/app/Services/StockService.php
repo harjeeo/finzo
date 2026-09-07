@@ -196,4 +196,64 @@ class StockService
 
         return $consumed;
     }
+
+    public function getStockByProduct(string $businessId, string $productId): array
+    {
+        $stocks = ProductStock::where('business_id', $businessId)
+            ->where('product_id', $productId)
+            ->where('quantity', '>', 0)
+            ->with(['godown.branch', 'batch'])
+            ->get()
+            ->sortBy(fn ($s) => $s->godown->name)
+            ->values();
+
+        return $stocks->map(fn (ProductStock $s) => [
+            'godownId' => $s->godown_id,
+            'godownName' => $s->godown->name,
+            'branchName' => $s->godown->branch->name,
+            'batchId' => $s->batch_id,
+            'batchNumber' => $s->batch?->batch_number,
+            'expiryDate' => $s->batch?->expiry_date?->toJSON(),
+            'quantity' => (float) $s->quantity,
+        ])->values()->all();
+    }
+
+    public function getExpiryReport(string $businessId, int $withinDays = 60): array
+    {
+        $cutoff = now()->addDays($withinDays);
+
+        $batches = Batch::where('business_id', $businessId)
+            ->whereNotNull('expiry_date')
+            ->whereHas('stocks', fn ($q) => $q->where('quantity', '>', 0))
+            ->with([
+                'product:id,name,unit',
+                'stocks' => fn ($q) => $q->where('quantity', '>', 0)->with('godown:id,name'),
+            ])
+            ->orderBy('expiry_date')
+            ->get();
+
+        $now = now();
+
+        return $batches->map(function (Batch $b) use ($cutoff, $now) {
+            $totalQuantity = $b->stocks->sum(fn ($s) => (float) $s->quantity);
+            $isExpired = $b->expiry_date->lt($now);
+            $isExpiringSoon = ! $isExpired && $b->expiry_date->lte($cutoff);
+
+            return [
+                'batchId' => $b->id,
+                'batchNumber' => $b->batch_number,
+                'productId' => $b->product->id,
+                'productName' => $b->product->name,
+                'unit' => $b->product->unit,
+                'expiryDate' => $b->expiry_date->toJSON(),
+                'totalQuantity' => $totalQuantity,
+                'status' => $isExpired ? 'EXPIRED' : ($isExpiringSoon ? 'EXPIRING_SOON' : 'OK'),
+                'stocks' => $b->stocks->map(fn ($s) => [
+                    'godownId' => $s->godown->id,
+                    'godownName' => $s->godown->name,
+                    'quantity' => (float) $s->quantity,
+                ])->values()->all(),
+            ];
+        })->values()->all();
+    }
 }
