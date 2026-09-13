@@ -6,20 +6,16 @@ use App\Models\Concerns\CamelCasesAttributes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
-class Customer extends Model
+class PriceList extends Model
 {
     use HasUuids, CamelCasesAttributes;
 
-    protected $fillable = [
-        'business_id', 'name', 'phone', 'email', 'gstin', 'address',
-        'opening_balance', 'credit_limit', 'price_list_id',
-    ];
+    protected $fillable = ['business_id', 'name', 'is_default'];
 
     protected function casts(): array
     {
         return [
-            'opening_balance' => 'decimal:2',
-            'credit_limit' => 'decimal:2',
+            'is_default' => 'boolean',
         ];
     }
 
@@ -28,8 +24,13 @@ class Customer extends Model
         return $this->belongsTo(Business::class);
     }
 
-    public function priceList()
+    public function items()
     {
-        return $this->belongsTo(PriceList::class);
+        return $this->hasMany(PriceListItem::class);
+    }
+
+    public function customers()
+    {
+        return $this->hasMany(Customer::class);
     }
 }

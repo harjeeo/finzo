@@ -42,6 +42,7 @@ class CustomerService
             'address' => $data['address'] ?? null,
             'opening_balance' => $data['openingBalance'] ?? 0,
             'credit_limit' => $data['creditLimit'] ?? null,
+            'price_list_id' => $data['priceListId'] ?: null,
         ]);
 
         $this->auditService->log([
@@ -71,6 +72,7 @@ class CustomerService
             'address' => array_key_exists('address', $data) ? $data['address'] : $customer->address,
             'opening_balance' => $data['openingBalance'] ?? $customer->opening_balance,
             'credit_limit' => array_key_exists('creditLimit', $data) ? $data['creditLimit'] : $customer->credit_limit,
+            'price_list_id' => array_key_exists('priceListId', $data) ? ($data['priceListId'] ?: null) : $customer->price_list_id,
         ]);
         $customer->save();
 

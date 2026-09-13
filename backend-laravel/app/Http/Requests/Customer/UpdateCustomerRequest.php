@@ -21,6 +21,7 @@ class UpdateCustomerRequest extends FormRequest
             'address' => ['sometimes', 'nullable', 'string'],
             'openingBalance' => ['sometimes', 'nullable', 'numeric', 'min:0'],
             'creditLimit' => ['sometimes', 'nullable', 'numeric', 'min:0'],
+            'priceListId' => ['sometimes', 'nullable', 'string'],
         ];
     }
 }

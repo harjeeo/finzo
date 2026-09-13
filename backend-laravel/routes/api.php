@@ -8,12 +8,14 @@ use App\Http\Controllers\Api\BusinessController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DeliveryChallanController;
+use App\Http\Controllers\Api\DiscountSchemeController;
 use App\Http\Controllers\Api\EwayBillController;
 use App\Http\Controllers\Api\ExpenseController;
 use App\Http\Controllers\Api\GodownController;
 use App\Http\Controllers\Api\InventoryController;
 use App\Http\Controllers\Api\JournalController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\PriceListController;
 use App\Http\Controllers\Api\PurchaseBillController;
 use App\Http\Controllers\Api\PurchaseOrderController;
 use App\Http\Controllers\Api\QuotationController;
@@ -167,4 +169,20 @@ Route::middleware('jwt.auth')->group(function () {
     Route::get('batches/expiry-report', [InventoryController::class, 'expiryReport']);
     Route::get('stock-transfers', [InventoryController::class, 'listTransfers']);
     Route::post('stock-transfers', [InventoryController::class, 'createTransfer'])->middleware('roles:MANAGER,ACCOUNTANT');
+
+    Route::middleware('roles:MANAGER,ACCOUNTANT')->group(function () {
+        Route::get('price-lists', [PriceListController::class, 'index']);
+        Route::get('price-lists/{id}', [PriceListController::class, 'show']);
+        Route::post('price-lists', [PriceListController::class, 'store']);
+        Route::patch('price-lists/{id}', [PriceListController::class, 'update']);
+        Route::delete('price-lists/{id}', [PriceListController::class, 'destroy']);
+        Route::post('price-lists/{id}/items/{productId}', [PriceListController::class, 'setItem']);
+        Route::delete('price-lists/{id}/items/{productId}', [PriceListController::class, 'removeItem']);
+
+        Route::get('discount-schemes', [DiscountSchemeController::class, 'index']);
+        Route::get('discount-schemes/{id}', [DiscountSchemeController::class, 'show']);
+        Route::post('discount-schemes', [DiscountSchemeController::class, 'store']);
+        Route::patch('discount-schemes/{id}', [DiscountSchemeController::class, 'update']);
+        Route::delete('discount-schemes/{id}', [DiscountSchemeController::class, 'destroy']);
+    });
 });

@@ -6,20 +6,23 @@ use App\Models\Concerns\CamelCasesAttributes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
-class Customer extends Model
+class DiscountScheme extends Model
 {
     use HasUuids, CamelCasesAttributes;
 
     protected $fillable = [
-        'business_id', 'name', 'phone', 'email', 'gstin', 'address',
-        'opening_balance', 'credit_limit', 'price_list_id',
+        'business_id', 'name', 'discount_type', 'value', 'product_id',
+        'min_quantity', 'start_date', 'end_date', 'is_active',
     ];
 
     protected function casts(): array
     {
         return [
-            'opening_balance' => 'decimal:2',
-            'credit_limit' => 'decimal:2',
+            'value' => 'decimal:2',
+            'min_quantity' => 'decimal:2',
+            'start_date' => 'date',
+            'end_date' => 'date',
+            'is_active' => 'boolean',
         ];
     }
 
@@ -28,8 +31,8 @@ class Customer extends Model
         return $this->belongsTo(Business::class);
     }
 
-    public function priceList()
+    public function product()
     {
-        return $this->belongsTo(PriceList::class);
+        return $this->belongsTo(Product::class);
     }
 }
